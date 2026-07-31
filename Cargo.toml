@@ -1,0 +1,43 @@
+[package]
+name = "clappkit"
+version = "0.1.0"
+edition = "2021"
+description = "Shared cross-platform foundation for Clatch apps (clapps): the control pipe (via clatch-pipe) + the app's own GUI<->CLI IPC (via clatch-ipc) + one-binary-two-roles dispatch, paths, atomic persistence and the Tauri glue."
+license = "Apache-2.0"
+
+# What a clapp pays for. The CORE (control pipe, IPC, role dispatch, paths, store,
+# asset, window policy) is dependency-light and GUI-free, so a headless clapp — or a
+# tool that links clappkit only for `ipc::request` — never compiles a PNG codec, AppKit
+# or a webview.
+[features]
+default = ["icon"]
+# The Dock/taskbar icon for a bare-executable clapp (icon.rs): a PNG codec + AppKit.
+icon = ["dep:image", "dep:cocoa", "dep:objc"]
+# The Tauri GUI half every clapp was copy-pasting (app.rs): apply_icon, window_cmd,
+# asset, spawn_ipc. OFF by default so the core stays tauri-free; a GUI clapp opts in
+# with `clappkit = { path = "…", features = ["tauri"] }`.
+tauri = ["dep:tauri", "icon"]
+
+# Depended on by every clapp so the plumbing lives in ONE place (DRY). The clatch
+# crates are consumed by relative path here; a published fork uses a git/crates.io dep.
+[dependencies]
+clatch-pipe = { path = "../../clatch/crates/clatch-pipe" }
+clatch-core = { path = "../../clatch/crates/clatch-core" }
+clatch-ipc = { path = "../../clatch/crates/clatch-ipc" }
+clatch-registry = { path = "../../clatch/crates/clatch-registry" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+# Inset a full-bleed icon tile to the native Dock/taskbar grid at runtime (icon.rs). PNG
+# only — no extra codecs; used on every OS (macOS Dock + the Windows/Linux window icon).
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+# The `tauri` feature only. Same version + feature set the four clapps already declare,
+# so enabling it adds NOTHING to their dependency graph — it only moves code out of them.
+tauri = { version = "2", features = ["image-png"], optional = true }
+
+# macOS-only: set the running app's Dock icon (a bare executable has none). The classic
+# cocoa/objc bindings are version-stable and coexist with tauri's objc2. See icon.rs.
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = { version = "0.26", optional = true }
+objc = { version = "0.2", optional = true }
