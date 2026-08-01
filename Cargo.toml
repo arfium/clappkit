@@ -21,10 +21,15 @@ tauri = ["dep:tauri", "icon"]
 # Depended on by every clapp so the plumbing lives in ONE place (DRY). The clatch
 # crates are consumed by relative path here; a published fork uses a git/crates.io dep.
 [dependencies]
-clatch-pipe = { path = "../../clatch/crates/clatch-pipe" }
-clatch-core = { path = "../../clatch/crates/clatch-core" }
-clatch-ipc = { path = "../../clatch/crates/clatch-ipc" }
-clatch-registry = { path = "../../clatch/crates/clatch-registry" }
+# Pinned to a RELEASED clatch, not to whatever is in a sibling checkout. The path
+# dependency this replaces only resolved when clatch happened to sit next to the
+# clapps directory — so a clapp cloned on its own could not build, and the one that
+# could was silently compiled against uncommitted launcher state. Bump the tag
+# deliberately; that is the point.
+clatch-pipe = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
+clatch-core = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
+clatch-ipc = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
+clatch-registry = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
