@@ -43,6 +43,7 @@ pub mod control;
 #[cfg(feature = "icon")]
 pub mod icon;
 pub mod ipc;
+pub mod media;
 pub mod paths;
 pub mod role;
 pub mod snapshot;
@@ -57,6 +58,7 @@ pub mod app;
 pub use control::{Agent, AgentRow, Avatar, Control, Emit, OnShutdown, ShutdownCause};
 #[cfg(feature = "icon")]
 pub use icon::{dock_icon, set_dock_icon};
+pub use media::Kind;
 pub use paths::{data_dir, data_file, data_subdir, ensure_private_dir};
 pub use window::{WindowPolicy, WindowVerb};
 
