@@ -197,7 +197,7 @@ pub fn store(cli: &str, id: &str, suggested: Option<&str>, bytes: &[u8]) -> Resu
 mod tests {
     use super::*;
 
-    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    use crate::ENV_LOCK as LOCK;
 
     /// Point the whole module at a scratch dir. `CLATCH_DATA_DIR` is process-global and
     /// these functions read it, so the tests must take turns — the caller BINDS the

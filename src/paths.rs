@@ -393,10 +393,19 @@ mod tests {
 
     #[test]
     fn data_file_lives_inside_data_dir() {
+        // Own the environment for the duration: `data_dir` follows CLATCH_DATA_DIR for
+        // every cli name, so without this the scratch dir below — and the cleanup that
+        // deletes it — belong to whichever test happened to set the variable last.
+        let _g = crate::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let root = std::env::temp_dir().join(format!("clappkit-paths-{}", std::process::id()));
+        std::env::set_var(DATA_DIR_ENV, &root);
+
         let f = data_file("clappkit-test", "state.json");
         assert_eq!(f.file_name().unwrap(), "state.json");
         assert_eq!(f.parent().unwrap(), data_dir("clappkit-test"));
-        let _ = std::fs::remove_dir_all(data_dir("clappkit-test"));
+
+        std::env::remove_var(DATA_DIR_ENV);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
 

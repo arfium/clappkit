@@ -162,6 +162,19 @@ pub async fn connect_or_die_with(cli: &str, on_shutdown: OnShutdown) -> Control 
     }
 }
 
+/// One lock for every test in this crate that touches `CLATCH_DATA_DIR`.
+///
+/// The variable is process-global and [`paths::data_dir`] obeys it for EVERY cli name, so
+/// two tests that set it concurrently do not merely interleave — one of them ends up
+/// operating inside the other's scratch directory. That is not hypothetical: a paths test
+/// deleted `data_dir("clappkit-test")` as cleanup, which under a media test's environment
+/// resolved to the media quarantine and removed it mid-write. The suite failed about one
+/// run in one, and only ever in the innocent test.
+///
+/// Take this before setting the variable, and hold it for the whole test.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
