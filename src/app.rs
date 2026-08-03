@@ -1,18 +1,7 @@
-//! The Tauri half of a clapp — **`tauri` feature only**.
+//! The Tauri glue — `tauri` feature only, so a headless clapp never compiles a webview.
 //!
-//! Everything here was copy-pasted into all four clapps, in some cases byte for byte:
-//! the icon dance, the `ping`/`focus`/`quit` match, the `asset` command, and the
-//! `spawn_ipc` → `apply` → `emit("state")` relay. It lives behind a feature rather than in
-//! the core so a headless clapp — or a tool that links clappkit only for
-//! [`crate::ipc::request`] — never compiles a webview. Enable it with:
-//!
-//! ```toml
-//! clappkit = { path = "../../clappkit", features = ["tauri"] }
-//! ```
-//!
-//! The pure decisions these functions act on live in [`crate::window`] (which verb is a
-//! window verb, what it answers) and [`crate::asset`] (MIME, data URI) — tauri-free, so
-//! they are testable without a window server. This module is only the glue.
+//! Only glue: the decisions live in [`crate::window`] and [`crate::asset`], which are
+//! tauri-free and therefore testable without a window server.
 
 use crate::window::{self, WindowPolicy, WindowVerb};
 use serde_json::Value;
@@ -153,17 +142,11 @@ pub fn push_state(app: &AppHandle, snap: Value) {
     let _ = app.emit(STATE_EVENT, snap);
 }
 
-/// Read a local image — an agent's avatar, whose absolute path Clatch resolved for us —
-/// and return it as a `data:` URI. The webview cannot open `file://` URLs and the roster
-/// only ever hands out absolute paths, so this is the one bridge. `None` when unreadable.
+/// A local image as a `data:` URI — the webview cannot open `file://`, and the roster
+/// hands out absolute paths. `None` when unreadable.
 ///
-/// Register it per app (a Tauri command must be declared in the app's own crate for
-/// `generate_handler!` to see it):
-///
-/// ```ignore
-/// #[tauri::command]
-/// fn asset(path: String) -> Option<String> { clappkit::app::asset(&path) }
-/// ```
+/// Declare the command in the app's own crate; `generate_handler!` cannot see it here:
+/// `#[tauri::command] fn asset(path: String) -> Option<String> { clappkit::app::asset(&path) }`
 pub fn asset(path: &str) -> Option<String> {
     crate::asset::data_uri(path)
 }

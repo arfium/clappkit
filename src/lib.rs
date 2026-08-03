@@ -1,38 +1,20 @@
-//! clappkit — the shared, cross-platform foundation for Clatch apps (clapps).
+//! The shared foundation every clapp is built on — see `docs/ARCHITECTURE.md`.
 //!
-//! A clapp is one binary with two roles over one shared state: a **GUI** (Tauri, for
-//! the human) and a **CLI** (for the agent) — "share state, not screens"
-//! (reference/app-developer.md). clappkit gives every clapp the plumbing both roles
-//! need, cross-platform (macOS / Windows / Linux) and DRY:
+//! A clapp is one binary with two roles over one state: a window for the human and a CLI
+//! for the agent. This crate is the plumbing both need:
 //!
-//!   * the **control pipe** to Clatch — via the official `clatch-pipe` binding
-//!     (`bootstrap` = run-only-under-Clatch, `connect` = register + live [`Control`]
-//!     for the agent roster and signal emission);
-//!   * the app's **own GUI↔CLI IPC** — a private request/response channel over
-//!     `clatch-ipc`'s unix-socket / named-pipe transport, which Clatch never sees
-//!     ([`ipc`]);
-//!   * **one binary, two roles** dispatch ([`role`]);
-//!   * **where state lives and how it is written** — [`paths`] (one data-dir resolver)
-//!     and [`store`] (atomic, private, durable JSON);
-//!   * the small shared decisions a GUI clapp kept re-deciding — the app-level window
-//!     verbs ([`window`]), local images for a webview ([`asset`]) and the snapshot
-//!     revision that orders the GUI's two writers ([`snapshot`]).
+//!   * [`control`] — the Clatch control pipe: bootstrap, register, roster, signals
+//!   * [`ipc`] — the app's own GUI↔CLI channel, which Clatch never sees
+//!   * [`role`] — which of the two roles this process is
+//!   * [`paths`] · [`store`] — where state lives, and writing it atomically and privately
+//!   * [`media`] — the outbox/quarantine boundary for files
+//!   * [`window`] · [`asset`] · [`snapshot`] — the small decisions every GUI clapp reran
 //!
-//! ## Features
+//! Two optional layers: `icon` (default) for the Dock/taskbar tile, and `tauri` (off) for
+//! the Tauri glue a GUI clapp needs — a headless one never compiles a webview.
 //!
-//! The core above is GUI-free and dependency-light. Two optional layers sit on top:
-//!
-//!   * `icon` (**default**) — the Dock/taskbar icon for a bare-executable clapp
-//!     ([`icon`]): a PNG codec and, on macOS, AppKit.
-//!   * `tauri` (off) — the Tauri glue every clapp was copy-pasting ([`app`]):
-//!     `apply_icon`, `window_cmd`, `asset`, `spawn_ipc`. A GUI clapp opts in with
-//!     `clappkit = { path = "…", features = ["tauri"] }`; a headless one never compiles
-//!     a webview.
-//!
-//! Apps depend on this crate instead of copying plumbing. Where an OS difference is
-//! unavoidable it is written ONCE and named: [`ipc::address`], [`paths::user_base`],
-//! [`store::atomic_write`]. Everything else is portable because the `clatch-*` crates
-//! already `cfg`-select their socket/named-pipe backends.
+//! Where an OS difference is unavoidable it is written once and named: [`ipc::address`],
+//! [`paths::user_base`], [`store::atomic_write`].
 
 pub use clatch_core::{SignalDecl, SignalType};
 

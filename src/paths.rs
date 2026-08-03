@@ -1,36 +1,19 @@
-//! Where a clapp keeps its state: ONE resolver, one hardening rule, one path type.
+//! Where a clapp keeps its state: one resolver, one hardening rule.
 //!
-//! Clatch hands a running instance `CLATCH_DATA_DIR` — the app's own directory under the
-//! Clatch home (`<clatch home>/appdata/<id>`), which is what `clatch purge` cleans and
-//! what a backup captures. Everything durable a clapp owns belongs under it: alarms,
-//! bot tokens, the WhatsApp link. Outside Clatch (the `CLATCH_STANDALONE` dev hatch, or
-//! the agent's CLI role started from a shell) there is no such var, so we fall back to
-//! the per-user location the host OS expects.
+//! Clatch sets `CLATCH_DATA_DIR` for a running instance; without it (the standalone
+//! hatch, or the CLI role from a shell) we fall back to the per-user OS location.
 //!
-//! Three rules this module exists to enforce, because four apps hand-rolled this and
-//! disagreed three ways:
+//! Three rules, each from a bug four hand-rolled resolvers hit:
 //!
-//! 1. **Every path is built with [`PathBuf::join`]**, never `format!("{home}/…")`. On
-//!    Windows `%USERPROFILE%` is `C:\Users\x`, so interpolation produced the mixed
-//!    `C:\Users\x/.clock` — tolerated by Win32, but wrong the moment the string meets a
-//!    verbatim `\\?\` prefix, a `strip_prefix`, or a user's eyes in an error message.
-//! 2. **An empty `CLATCH_DATA_DIR` is not a data dir.** An exported-but-empty var made
-//!    one app write its store into the process cwd — which under Clatch is the *install*
-//!    directory, where an update destroys it.
-//! 3. **There is no `"."` fallback.** The old resolvers ended in `unwrap_or(".")`, i.e.
-//!    "write the user's credentials into the install directory". If we cannot find a
-//!    home we say so and use a private temp directory, loudly.
+//! 1. **Join, never interpolate.** `format!("{home}/…")` produced `C:\Users\x/.clock`.
+//! 2. **An empty `CLATCH_DATA_DIR` is not a data dir.** It made one app write its store
+//!    into the cwd — under Clatch that is the install directory, wiped on update.
+//! 3. **No `"."` fallback.** `unwrap_or(".")` means "put credentials in the install
+//!    directory". With no home we say so and use a private temp dir.
 //!
-//! ## Privacy, honestly
-//!
-//! On unix the directory is created and then tightened to `0700` — owner-only, matching
-//! the Swift apps' runtime dir. **Windows has no equivalent here.** The directory
-//! inherits its parent's ACL, which under `%LOCALAPPDATA%` is user + SYSTEM +
-//! Administrators (tolerable) but under a `CLATCH_DATA_DIR` is whatever that tree
-//! carries. Giving it an explicit owner-only DACL needs a Win32 security-descriptor call
-//! (`windows-sys`), a dependency this crate does not take; until it does, [`ensure_private_dir`]
-//! does not claim a protection Windows is not giving. Do not write a comment anywhere
-//! that says otherwise.
+//! Unix gets `0700`. **Windows gets nothing equivalent** — the directory inherits its
+//! parent's ACL, and an owner-only DACL needs a Win32 call this crate does not take.
+//! Do not write a comment claiming otherwise.
 
 use std::path::{Path, PathBuf};
 

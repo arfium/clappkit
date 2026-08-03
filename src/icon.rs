@@ -1,32 +1,15 @@
-//! The Dock/taskbar icon for a **bare-executable** clapp.
+//! The Dock/taskbar tile, set at runtime.
 //!
-//! A clapp ships as a lone binary (no `.app` bundle, no embedded resource fork) that
-//! Clatch launches directly. With nothing to carry an icon, macOS falls back to the
-//! generic terminal tile in the Dock. The fix is the same one the native Swift apps
-//! used — set it at runtime: `NSApp.applicationIconImage = NSImage(data:)`. This module
-//! is that one line, kept here so every clapp shares it (DRY) and clappkit's core stays
-//! tauri-free — pure AppKit via the version-stable `cocoa`/`objc` crates, which coexist
-//! happily with the `objc2` that tauri pulls in. (The `tauri` feature adds
-//! [`crate::app::apply_icon`], which does the window/taskbar half on top of this one.)
+//! **Two standards, one PNG.** `assets/icon.png` is full-bleed because that is the library
+//! house style (`docs/ICONS.md`), but the Dock expects a ~10–20% transparent margin — hand
+//! it a full-bleed tile and it towers over every native neighbour. [`dock_icon`] insets to
+//! Apple's ~80% grid; a mark that already carries its own margin is left alone.
 //!
-//! This module is itself the `icon` feature — on by default, but a headless clapp can turn
-//! it off and stop compiling a PNG codec and AppKit for a Dock tile it has no use for.
+//! macOS is the only OS with a process-wide icon to set, so [`set_dock_icon`] is a no-op
+//! elsewhere and the window icon carries it instead — pass it [`dock_icon`] too.
 //!
-//! ## Full-bleed source, padded Dock icon
-//!
-//! `assets/icon.png` is authored **full-bleed** (the tile fills the whole canvas) because
-//! that is the Clatch *library* house style — tiles on a shelf must all read at one size
-//! (docs/ICONS.md). But the macOS **Dock** expects the opposite: native icons carry a
-//! transparent margin (~10–20%) so the squircle sits at the standard Dock-grid size. Hand
-//! the Dock a full-bleed PNG and it renders edge-to-edge — visibly bigger than every
-//! native neighbour. So [`dock_icon`] insets a full-bleed tile to Apple's ~80% grid before
-//! it becomes the Dock/taskbar icon, while the source PNG stays full-bleed for the shelf.
-//! A mark that already carries its own margin (a transparent glyph like chess's pawn) is
-//! left untouched.
-//!
-//! On Windows/Linux there is no process-wide icon to set the AppKit way; the app gives its
-//! *window* an icon (`WebviewWindow::set_icon`) — pass it [`dock_icon`] too, for the same
-//! sizing. So [`set_dock_icon`] is a deliberate no-op off macOS.
+//! This module is the `icon` feature: on by default, off for a headless clapp that has no
+//! use for a PNG codec and AppKit.
 
 use image::{imageops, GenericImageView, ImageFormat, RgbaImage};
 use std::io::Cursor;

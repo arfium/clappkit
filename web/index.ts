@@ -1,18 +1,8 @@
-// clappkit/web — the front-end half of the shared plumbing.
+// The front-end half: plain .ts behind a Vite alias, so no npm package and no new
+// dependency. React and @tauri-apps/api come from the consuming app's node_modules.
 //
-// Plain .ts source, resolved by a Vite alias, so NO npm package and NO new dependency is
-// added anywhere. `@tauri-apps/api` and `react` are imported from the CONSUMING app's
-// node_modules; every clapp already has both.
-//
-// Wiring, per app (3 lines):
-//   vite.config.ts   resolve: { alias: { "@clappkit": path.resolve(__dirname, "../clappkit/web") } },
-//                    server:  { fs: { allow: [".", "../clappkit"] } }   // dev server only
-//   tsconfig.json    "paths": { "@clappkit": ["../clappkit/web/index.ts"] }
-//
-// What belongs here: the two channels every clapp speaks over, the avatar cache, and the
-// snapshot wiring — all of which were written out once per app. What does NOT belong
-// here: an app's own types (`ChessState`, `Alarm`, `Req`, `EMPTY`) and its own
-// normalisation. Each bridge.ts keeps those and re-exports from "@clappkit".
+// Here: the two channels, the avatar cache, the snapshot wiring. Not here: an app's own
+// types and normalisation — each bridge.ts keeps those and re-exports from "@clappkit".
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";

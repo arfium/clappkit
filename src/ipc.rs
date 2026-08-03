@@ -31,20 +31,14 @@ const MAX_ACCEPT_FAILURES: u32 = 32;
 /// The per-app IPC address, keyed by the CLI shorthand so two clapps never collide:
 /// `\\.\pipe\clapp-<cli>-<user>` on Windows, `~/.<cli>/<cli>.sock` on unix.
 ///
-/// **Deliberately NOT [`crate::paths::data_dir`]**, and it must stay that way: the agent's
-/// CLI role is a separate process that Clatch does not launch, so it has no
-/// `CLATCH_DATA_DIR` — the two roles must be able to derive the same address from the
-/// user's home alone. Moving this onto the data dir would silently disconnect every CLI
-/// call from the running GUI.
+/// **Not [`crate::paths::data_dir`]**, and it must stay that way: the CLI role is a
+/// separate process Clatch never launched, so it has no `CLATCH_DATA_DIR`. Both roles must
+/// derive the same address from the home alone, or every CLI call misses the running GUI.
 ///
-/// The two arms are NOT equivalent in privacy. Unix gets a socket inside a `0700`
-/// directory (`clatch-ipc`'s `Listener::bind` creates it that way), so it is genuinely
-/// owner-only. A Windows pipe name lives in one machine-wide namespace with no user or
-/// session scoping and, created with NULL security attributes, carries the default DACL
-/// (read access for Everyone). The `-<user>` suffix below stops two logged-in users from
-/// colliding on one name; it does NOT make the channel owner-only. Closing that gap needs
-/// `ServerOptions::security_attributes` in `clatch-ipc`'s transport, which is where it
-/// belongs — see reference/cross-platform.md B1.
+/// The two arms differ in privacy. Unix gets a socket in a `0700` directory — genuinely
+/// owner-only. A Windows pipe name is machine-wide with a default DACL; the `-<user>`
+/// suffix stops collisions between logged-in users, it does not make the channel private.
+/// Closing that needs security attributes in `clatch-ipc`'s transport, where it belongs.
 pub fn address(cli: &str) -> String {
     #[cfg(windows)]
     {
