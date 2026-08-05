@@ -254,14 +254,14 @@ mod tests {
 
     #[test]
     fn unix_style_is_a_dotdir_windows_style_is_not() {
-        let base = Path::new("/Users/berkin");
+        let base = Path::new("/Users/ada");
         assert_eq!(
             join_app_dir(base, "clock", false),
-            PathBuf::from("/Users/berkin/.clock")
+            PathBuf::from("/Users/ada/.clock")
         );
         assert_eq!(
             join_app_dir(base, "clock", true),
-            PathBuf::from("/Users/berkin").join("clock")
+            PathBuf::from("/Users/ada").join("clock")
         );
     }
 

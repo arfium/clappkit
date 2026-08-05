@@ -235,8 +235,8 @@ mod tests {
     #[test]
     fn the_unix_socket_lives_in_the_apps_dotdir() {
         assert_eq!(
-            socket_path(Path::new("/Users/berkin"), "clock"),
-            Path::new("/Users/berkin/.clock/clock.sock")
+            socket_path(Path::new("/Users/ada"), "clock"),
+            Path::new("/Users/ada/.clock/clock.sock")
         );
     }
 
