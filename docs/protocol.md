@@ -240,15 +240,22 @@ other apps it is bound to (the local trust boundary). It exists so the app can p
 ## 11. Errors
 
 Errors exist only for **requests** (`app.register`). Signals are fire-and-forget: a
-violation (an undeclared id, a type mismatch) is **dropped**, never answered.
+violation (an undeclared id, a type mismatch) is **dropped** launcher-side and never
+answered, so an app cannot be stalled or probed through its own misbehaviour.
 
-| code | when |
-|---|---|
-| `IDENTITY_MISMATCH` | register's token ≠ the injected one |
-| `MALFORMED` | unparseable / schema-invalid message |
+There are exactly two, and the numbers are what travel on the wire
+(`clatch-pipe`'s `ErrorCode`):
 
-Protocol-major support is checked at **install** (from the manifest's `protocol`), not
-here — a running instance is already compatible.
+| code | number | when |
+|---|---|---|
+| `IDENTITY_MISMATCH` | 1001 | register's token ≠ the injected one |
+| `MALFORMED` | 1002 | unparseable / schema-invalid message |
+
+**There is no `PROTOCOL_UNSUPPORTED` and no `RATE_LIMITED`.** Said out loud because
+their absence is a design decision, not an omission: protocol-major support is checked
+at **install** from the manifest's `protocol`, so a running instance is already
+compatible, and a launcher that rate-limited a local app would be throttling the human
+who launched it.
 
 ## 12. Security & versioning
 
