@@ -180,6 +180,37 @@ line or a CLI answer — snapshots are the one structure that goes everywhere, s
 secret must be absent from them by construction, not by redaction. What both surfaces show
 is whether it is *connected*, which is all either of them needs to know.
 
+## 14. Continuous state reports on a threshold, not a clock
+
+A map's camera changes sixty times a second under a dragging hand; an agent wants none of
+those and must still eventually hear the drift. The pattern from `maps-clapp`: the window
+reports only a **settled** value (debounced ~250 ms), and the core decides whether the
+move is *news* — half a screen-width, or two zoom levels, judged against the last value
+the agent was actually told, so nudges accumulate into one honest report. The same
+threshold gates any per-move spending (a reverse lookup naming the view). Never a timer:
+polling a continuous value is how you pay for silence.
+
+## 15. Ambiguity is a state, not a guess and not an error
+
+"Route to Taksim" names a square and a metro station. Picking one silently routes with
+total confidence to the wrong place; refusing teaches nothing. `maps-clapp`'s answer:
+park a **visible placeholder** in the shared state ("stop 3 — choosing"), put the
+candidates in the result list both surfaces already render, and let either surface answer
+— `select 2`, or a click on the row. The placeholders themselves are the queue for many
+open questions at once; there is no second list to drift. Corollary: a clear winner is not
+ambiguity — gate on the *margin* between the top two scores, and let an exact name match
+be decisive.
+
+## 16. The data already on screen answers first
+
+Vector tiles are not pictures: OpenMapTiles carries a classified `poi` layer, decoded and
+in memory for whatever the map is drawing. `maps-clapp` answers a category tap ("fuel")
+from `querySourceFeatures` in the same frame, then lets the real (gated, remote) query
+replace it a moment later — and the head start goes **through the shared state**, so the
+agent sees what the human sees. A head start only one surface knows about is drift with
+better manners. When the tiles carry nothing, the seed is silently inert: below a minimum
+it does not fire at all.
+
 ## Field notes
 
 - **`npm run build`, never bare `cargo build`.** Without Tauri's `custom-protocol` feature
@@ -192,6 +223,23 @@ is whether it is *connected*, which is all either of them needs to know.
   from hammering reconnects. Use `fetchLatestBaileysVersion()` and back off.
 - **BSD `sed` has no `\b`.** Scripts that must run on stock macOS can't use GNU-only regex.
 - **The shell cwd resets between tool calls** in an agent harness. Use absolute paths.
+- **"Insert before the first symbol layer" is folklore, not a rule.** OpenFreeMap's dark
+  style opens with `water_name` at index 8 — before any road — so the advice buried a
+  route under the whole city; liberty put bridges over it. Anchor overlays at the first
+  symbol AFTER the last geometry layer: above every road, below every name.
+- **`map.on("load")` may never fire**; install sources/layers on `styledata`, guarded by
+  asking the map (`getSource(...)`) rather than a flag — then a deliberate theme
+  `setStyle` rebuilds them for free.
+- **Animated camera moves do not run while the document is hidden** (rAF stops): an
+  agent's `goto` into a minimised window is silently swallowed. If nothing will animate,
+  jump.
+- **A packaging fallback that "just copies" ships the wrong artifact on exactly the
+  machines nobody watches.** The Dock-icon inset step fell back to the raw full-bleed PNG
+  when its tool was missing — correct on the author's machine, towering in the Dock on
+  keyless ones. Run repo tools through the app's own manifest (so vendored patches apply)
+  and fail loud.
+- **Case-fold what the map's editors type**: the first live supermarket wrote its hours
+  `mo-su 09:00-21:00`. Parsers meet data, not specs.
 - **`src/preview.ts` renders the UI in a plain browser** against a fake snapshot. It is how
   you look at the window without a build, and how you check the two states an agent-driven
   screen has (tinted, mid-flight) without waiting on the vendor's API.
