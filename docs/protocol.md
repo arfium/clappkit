@@ -8,6 +8,13 @@ Clatch never sees it.
 Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch
 cannot already know: no echoed id, no sequence number, no reserved-but-empty method.
 
+> **This is a mirror, not the source.** The normative text lives in the Clatch
+> repository and wins wherever the two disagree: `reference/manifest.md` (§1),
+> `reference/elements.md` (the type matrix, and the package format), `reference/launch.md`
+> (the depot layout), `reference/protocol.md` (§2–§12) and `reference/clapp.md` (the frozen
+> connector). It is carried here so a clapp can read the contract offline; when you touch
+> it, diff against those five and nothing else.
+
 ## 1. The manifest — `clatch.json`
 
 The app's static declaration, read at **install**. It is the single source for
@@ -36,22 +43,43 @@ the agent-facing surface.
 | field | required | rule |
 |---|---|---|
 | `manifestVersion` | yes | integer, `1` |
+| `type` | no (default `clapp`) | `clapp` \| `cli` \| `skill`. The default keeps every pre-taxonomy manifest valid |
 | `id` | yes | reverse-DNS, path-segment safe (no `/`, `..`) |
 | `name` · `description` · `version` | yes | non-empty strings |
 | `protocol` | yes | integer; the control-pipe major this app targets (§6) |
 | `launch` | yes | ≥1 per-OS command (`macos`/`linux`/`windows`), optional `args` |
 | `icon` · `banner` · `about` · `tags` | no | presentation (library page) |
-| `connector` | no | the agent-facing surface; omit it entirely for a bare app |
-| `connector.cli` | no | the CLI shorthand — declare it iff the agent should drive the app; `<cli> -h` is the whole manual |
-| `connector.cliBin` | no | CLI binary path; default `bin/<cli>` |
+| `connector.cli` | **yes** | the CLI shorthand the agent types; `<cli> -h` is the whole manual |
+| `connector.cliBin` | no | a NAME relative to the content root, resolved with host executable extensions; default `bin/<cli>` |
 | `connector.commands` | no | `[{name, about}]` — the permission grain + library display; NOT the manual |
 | `connector.signals` | no | `[{id, type}]`, `type ∈ run \| context \| buffered` — declared and typed (§8) |
+| `connector.login` · `loginCheck` · `logout` | no | **`cli` only** — the tool's own auth verbs |
+
+**There is no CLI-less element.** `connector.cli` is the floor for every type: the CLI
+is the constant surface an agent drives, so a manifest without one is rejected at
+validate and install.
+
+### What each type may declare
+
+| | `clapp` | `cli` |
+|---|---|---|
+| `launch` | **required** | **forbidden** |
+| `connector.cli` (+ `cliBin`) | required | required |
+| `connector.signals` | optional | **forbidden** — a cli has no app→agent path |
+| `connector.login` / `loginCheck` / `logout` | **forbidden** — the app's GUI owns auth | optional |
+
+**Forbidden means rejected**, not ignored: a silent drop would let a package believe it
+declared something it never got.
+
+**A manifest may never say `skill`.** A skill has no `clatch.json` at all — it is a plain
+`.md` whose YAML front matter IS its manifest, and its `name` is its identity. One
+claiming the type is refused, with where its metadata belongs instead.
 
 The **advertised platforms are the `launch` OS keys** (a per-OS command is the claim
-"runs on that OS"). The `connector` surface is optional and independent: a
-signal-only observer has no `cli`; a driveable app has one. **Additive-only within a
-`manifestVersion`** — new optional fields only; a launcher ignores fields it does not
-know. A breaking change bumps `manifestVersion`.
+"runs on that OS"); there is no separate `platforms` field, and a distribution ships one
+depot per platform. **Additive-only within a `manifestVersion`** — new optional fields
+only, never a new mandatory one; a launcher ignores fields it does not know. A breaking
+change bumps `manifestVersion`.
 
 ### Presentation assets — `icon` & `banner`
 
@@ -91,6 +119,24 @@ First thing in `main`, the app calls **`clatch_init(appId)`**:
 Injected env: `CLATCH_APP_ID`, `CLATCH_INSTANCE_ID`, `CLATCH_CONTROL_ADDR`,
 `CLATCH_INSTANCE_TOKEN`. No protocol version is injected — the major the app targets
 is the manifest's `protocol` (§1), validated at install (§6).
+
+### The package — a `.clapp`
+
+One format for every type: **a zip rooted at `clatch.json`**, where the manifest's `type`
+inside selects the treatment — never the file extension, never the repo name.
+
+```
+com.example.clapp-macos-arm64.clapp
+  clatch.json              the manifest
+  bin/<cli>                only the HOST platform's binaries (launch + cliBin)
+  assets/icon.png          icon, banner, …
+  <name>.clapp.sig         optional detached signature, checked before opening
+```
+
+A `.clapp` is therefore **per-OS-arch**: a distribution ships one depot per platform, and
+each carries its own `cliBin`/`launch` resolved for that host. **Nothing runs on install**
+— opening one is file extraction only, and the app executes solely later through
+`clatch run`.
 
 ## 3. Transport
 
