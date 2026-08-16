@@ -43,12 +43,13 @@ the agent-facing surface.
 | field | required | rule |
 |---|---|---|
 | `manifestVersion` | yes | integer, `1` |
-| `type` | no (default `clapp`) | `clapp` \| `cli` \| `skill`. The default keeps every pre-taxonomy manifest valid |
+| `type` | no (default `clapp`) | `clapp` \| `cli`. **Never `skill`** — a skill is a Markdown file with front matter, not a package. The default keeps every pre-taxonomy manifest valid |
 | `id` | yes | reverse-DNS, path-segment safe (no `/`, `..`) |
 | `name` · `description` · `version` | yes | non-empty strings |
 | `protocol` | yes | integer; the control-pipe major this app targets (§6) |
 | `launch` | yes | ≥1 per-OS command (`macos`/`linux`/`windows`), optional `args` |
 | `icon` · `banner` · `about` · `tags` | no | presentation (library page) |
+| `photos` | no | up to 4 screenshots, in the order shown; paths relative to the content root |
 | `connector.cli` | **yes** | the CLI shorthand the agent types; `<cli> -h` is the whole manual |
 | `connector.cliBin` | no | a NAME relative to the content root, resolved with host executable extensions; default `bin/<cli>` |
 | `connector.commands` | no | `[{name, about}]` — the permission grain + library display; NOT the manual |
@@ -122,21 +123,26 @@ is the manifest's `protocol` (§1), validated at install (§6).
 
 ### The package — a `.clapp`
 
-One format for every type: **a zip rooted at `clatch.json`**, where the manifest's `type`
-inside selects the treatment — never the file extension, never the repo name.
+**A `.clapp` packages the two types that have a payload**: a zip rooted at `clatch.json`,
+where the manifest's `type` inside selects the treatment — never the file extension, never
+the repo name. **A skill ships as its `.md`** through the same routes; a document needs no
+envelope.
 
 ```
 com.example.clapp-macos-arm64.clapp
-  clatch.json              the manifest
+  clatch.json              the manifest, identical across this version's depots
   bin/<cli>                only the HOST platform's binaries (launch + cliBin)
-  assets/icon.png          icon, banner, …
+  assets/icon.png          icon, banner, up to 4 photos
   <name>.clapp.sig         optional detached signature, checked before opening
 ```
 
-A `.clapp` is therefore **per-OS-arch**: a distribution ships one depot per platform, and
-each carries its own `cliBin`/`launch` resolved for that host. **Nothing runs on install**
-— opening one is file extraction only, and the app executes solely later through
-`clatch run`.
+**One platform per depot**, named `<id>-<os>-<arch>.clapp`. The launcher picks the host's
+on install, widest match last — `<os>-<arch>`, then `<os>-any`, then a cross-platform
+`<id>.clapp` for script-only apps — and no match is a loud error listing what the release
+ships. Only the host launch command is validated.
+
+**Nothing runs on install.** Opening one is file extraction only; the app executes later
+through `clatch run`.
 
 ## 3. Transport
 
