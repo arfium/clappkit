@@ -10,12 +10,18 @@
 # key for — so it builds here with the same vendored copy the apps use. There is no
 # vendor/ in this repo, which is why the build below is the app-side patch's problem and
 # this workflow tests what it can without one: the library's own logic.
+# NOT RUN AUTOMATICALLY. GitHub Actions minutes are the constraint here, and this family
+# is fifteen repositories: on a private repo a macOS runner bills at 10x, so a push-and-PR
+# gate across all of them burns the allowance faster than it earns anything. The local
+# gate is the real one — `npm run verify` opens a window and proves the two surfaces talk,
+# which no headless runner can do anyway.
+#
+# So this is manual: `gh workflow run CI -R <owner>/<repo>`. Put `push`/`pull_request`
+# back when there is budget for it; nothing else here needs to change.
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
