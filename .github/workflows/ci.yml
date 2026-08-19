@@ -1,0 +1,59 @@
+# CI for the crate every clapp is built on. A break here breaks all of them at once, and
+# nothing else runs these tests — each app's CI compiles clappkit but exercises its own
+# code, not this one's.
+#
+# macOS and Windows, one job each: the same two platforms the family ships, and the two
+# where this crate's `cfg` branches actually differ (unix `0700` vs a Windows ACL, a unix
+# socket vs a named pipe, AppKit vs nothing).
+#
+# clappkit is public and depends on the clatch crates over ssh://, which a runner has no
+# key for — so it builds here with the same vendored copy the apps use. There is no
+# vendor/ in this repo, which is why the build below is the app-side patch's problem and
+# this workflow tests what it can without one: the library's own logic.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Stop Defender scanning the build (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}","$env:USERPROFILE\.cargo","$env:USERPROFILE\.rustup" -ErrorAction SilentlyContinue
+          Write-Host "excluded: workspace, ~/.cargo, ~/.rustup"
+
+      # The tests are the point. They are also order-dependent in one place — several
+      # touch the process-global CLATCH_DATA_DIR — so ENV_LOCK exists and this runs them
+      # in parallel deliberately, which is what caught that in the first place.
+      #
+      # No `cargo fmt --check` here on purpose: the crate is not fmt-clean today (41
+      # blocks), so the gate would be red on arrival, and a red nobody can fix is how
+      # people learn to ignore CI. Reformat first, then add it.
+      - name: Test
+        run: cargo test --all-features
