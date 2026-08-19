@@ -49,6 +49,7 @@ the agent-facing surface.
 | `protocol` | yes | integer; the control-pipe major this app targets (§6) |
 | `launch` | yes | ≥1 per-OS command (`macos`/`linux`/`windows`), optional `args` |
 | `icon` · `banner` · `about` · `tags` | no | presentation (library page) |
+| `publisher` | no | who published it. A package's reverse-DNS id implies its maker; a skill has no such id, so its ribbon is drawn from this and the name |
 | `photos` | no | up to 4 screenshots, in the order shown; paths relative to the content root |
 | `connector.cli` | **yes** | the CLI shorthand the agent types; `<cli> -h` is the whole manual |
 | `connector.cliBin` | no | a NAME relative to the content root, resolved with host executable extensions; default `bin/<cli>` |

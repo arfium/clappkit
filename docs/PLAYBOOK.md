@@ -83,12 +83,18 @@ clatch-core = { path = "../vendor/clatch/crates/clatch-core" }
 ```
 
 Copy the crates in at a **pinned tag**, keep a `scripts/vendor-clatch.sh` that refreshes
-the copy at a newer one, and record which tag is in there. The standing proof that nothing
-private is left is a build with no network and no lockfile drift:
+the copy at a newer one, and record which tag is in there. Two proofs, and they are not
+interchangeable:
 
 ```sh
-cargo build --offline --locked
+cargo build --offline --locked   # LOCAL: nothing is fetched at all
+cargo fetch  --locked            # CI: a runner with no key resolves every dependency
 ```
+
+`--offline` also forbids crates.io, which a fresh runner has never downloaded — it passes
+on a developer's machine only because the registry cache is warm, so in CI it measures the
+machine rather than the claim. What CI can honestly assert is the keyless one: no ssh key
+exists there, so a patch that stopped redirecting would fail on authentication right then.
 
 Then the workflow needs no secret at all. `secrets.*` is also not usable in a job-level
 `if:` — if you find yourself writing a `gate` job to work around that, you are still
