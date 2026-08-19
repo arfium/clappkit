@@ -82,21 +82,27 @@ depot per platform. **Additive-only within a `manifestVersion`** — new optiona
 only, never a new mandatory one; a launcher ignores fields it does not know. A breaking
 change bumps `manifestVersion`.
 
-### Presentation assets — `icon` & `banner`
+### Presentation assets — `icon`, `banner` & `photos`
 
 Optional, but when shipped they carry a fixed standard (as the agent avatar does),
-checked at install for format and minimum resolution. Aspect is a design target, not
-a hard check — the GUI scales every asset with `cover`, so a mismatch crops, never
-letterboxes.
+checked at install for format and resolution. Aspect is a design target, not a hard
+check — the GUI scales every asset with `cover`, so a mismatch crops, never letterboxes.
 
-| | `icon` | `banner` |
-|---|---|---|
-| role | app mark — library tiles + the detail hero (rendered 76px) + shortcuts | the library detail **hero** strip, behind the identity text |
-| format | PNG (the desktop app icon) | PNG / JPEG / WebP |
-| aspect | **1:1** (square) | **215:32** (≈ 6.72:1) — design canvas `860×128` |
-| min resolution | **512×512** | **3440×512** |
-| max resolution | 1024×1024 | — |
-| max file | 1 MiB | 2 MiB |
+| | `icon` | `banner` | `photos` |
+|---|---|---|---|
+| role | app mark — library tiles + the detail hero (rendered 76px) + shortcuts | the library detail **hero** strip, behind the identity text | what the app LOOKS like: screenshots on the library page and a marketplace listing |
+| count | 1 | 1 | **at most 4**, shown in the manifest's order |
+| format | PNG (the desktop app icon) | PNG / JPEG / WebP | PNG / JPEG / WebP, by **magic bytes** — the extension follows the format, it does not declare it |
+| aspect | **1:1** (square) | **215:32** (≈ 6.72:1) — design canvas `860×128` | free |
+| min resolution | **512×512** | **3440×512** | — |
+| max resolution | 1024×1024 | — | **1920×1080** |
+| max file | 1 MiB | 2 MiB | **2 MB each** |
+
+A photo that breaks a rule is **rejected at validate/install**, like any other manifest
+error, so a package cannot ship art the launcher would have to refuse to draw later.
+**Nothing is resized on the way in**: shipping a 4000px screenshot is telling the launcher
+to draw something it never checked. Four is a shelf, not an album, and the 2 MB ceiling is
+what keeps a depot downloadable on the connection somebody actually has.
 
 The banner renders as a **128px-tall, ≤860px-wide** hero, `cover`-cropped and centered,
 under a **left-dark horizontal scrim** (white identity text sits over the left ~40%).
