@@ -9,9 +9,8 @@ it. The **static** half — the package and its manifest — is [`format.md`](fo
 Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch cannot
 already know: no echoed id, no sequence number, no reserved-but-empty method.
 
-> **A mirror, not the source.** The normative text lives in the Clatch repository and wins
-> wherever the two disagree: `reference/protocol.md` and `reference/clapp.md` (the frozen
-> connector). Diff against those two and nothing else.
+> **This is the source of truth.** The Clatch launcher implements it; where the launcher
+> disagrees with this document, the launcher is the bug. Changes land here first.
 
 ## Dependency & launch
 

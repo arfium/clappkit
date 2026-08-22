@@ -11,8 +11,9 @@ which are ours. When they disagree, the contract wins.
 | [`format.md`](format.md) | **The `.clapp` format** — the depot layout, every `clatch.json` field, the type matrix, the picture limits, per-platform depots. Read at install. |
 | [`protocol.md`](protocol.md) | **The control pipe** — how a running clapp and the launcher talk: transport, framing, vocabulary, signals, lifecycle, errors. |
 
-All three mirror the Clatch reference and name their sources at the top. Clatch is
-normative; these copies exist so an element can read the contract offline.
+**These three are the source of truth.** Two implementations follow them — the Clatch
+launcher, which validates and installs, and the Arfium marketplace, which lists and serves.
+Where an implementation disagrees, the implementation is the bug. Changes land here first.
 
 ## The house standards
 

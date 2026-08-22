@@ -30,6 +30,11 @@ not a missing feature.
 The field-by-field rules are in [`format.md`](format.md); the runtime half a clapp speaks
 is [`protocol.md`](protocol.md).
 
+> **This is the source of truth.** Two implementations follow it — the Clatch launcher,
+> which validates and installs, and the Arfium marketplace, which lists and serves. Where
+> an implementation disagrees with this document, the implementation is the bug. Changes
+> land here first.
+
 ## clapp
 
 A full app: a window for the human, a CLI for the agent, one binary serving both over one
@@ -102,6 +107,3 @@ tags: [writing, docs]      # optional
 `acme/parts-cli`. The suffix names the ecosystem, not the kind, so a repository never needs
 renaming when its type changes. The launcher reads the manifest and ignores the directory
 name entirely.
-
-> **A mirror, not the source.** The normative text is `reference/elements.md` in the Clatch
-> repository, and it wins wherever the two disagree.

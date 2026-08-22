@@ -61,8 +61,9 @@ answers what. One copy, carried by every clapp.
 | [`icons.md`](docs/icons.md) | The mark, and why the Dock needs its own inset |
 | [`playbook.md`](docs/playbook.md) | Rules learned by getting them wrong |
 
-The three contract documents mirror the Clatch reference and name their sources at the top.
-Clatch is normative; these copies exist so an element can read the contract offline.
+The three contract documents are the **source of truth** for the element formats. Two
+implementations follow them — the Clatch launcher and the Arfium marketplace. Where an
+implementation disagrees, the implementation is the bug.
 
 ## Tests
 

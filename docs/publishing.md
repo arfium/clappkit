@@ -62,11 +62,17 @@ These are for the store page, and they are uploaded separately — not read out 
 package. That way fixing a banner does not mean cutting a release, and cutting a release does
 not silently change a store page nobody reviewed.
 
+The bounds are the package's — [`format.md`](format.md) § Picture limits — and there is
+only one set of them:
+
 | | required | size | format | max |
 |---|---|---|---|---|
-| icon | **yes** | square, 512–1024 px | PNG, WebP | 512 KB |
-| banner | no | 1600 × 500 | PNG, JPEG, WebP | 2 MB |
-| photos | no, up to 4 | up to 1920 × 1080 | PNG, JPEG, WebP | 2 MB each |
+| icon | **yes** | square, 512–1024 px | PNG | 1 MiB |
+| banner | no | 215:32, min 3440 × 512 | PNG, JPEG, WebP | 2 MiB |
+| photos | no, up to 4 | up to 1920 × 1080 | PNG, JPEG, WebP | 2 MiB each |
+
+A store card is squarer than the library's hero strip, so the store **crops the banner to
+its own frame**. You author one banner, not two.
 
 No SVG — it can carry scripts and the store page draws it in a browser. No GIF.
 
@@ -87,10 +93,9 @@ curl -X PUT --data-binary @icon.png -H 'Content-Type: image/png' \
   https://…/v1/publisher/elements/com.acme.notes/assets/icon
 ```
 
-**These are not the manifest's `icon` / `banner` / `photos`.** Those live inside the depot,
-are read at install, and carry their own limits ([`format.md`](format.md) § Picture limits). The names are the same and the numbers are not: a store page is reviewed and can be
-fixed without cutting a release, so it gets its own set. Do not copy one table into the
-other.
+**Same pictures, same bounds, separate delivery.** The depot's copies are read at install;
+these are uploaded on their own so fixing a banner does not mean cutting a release. What
+must never differ is the numbers — one set, in [`format.md`](format.md).
 
 ### 4. Submit
 
