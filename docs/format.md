@@ -69,7 +69,7 @@ the agent-facing surface.
 | `name` | **yes** | non-empty; the display name | `"Notes"` |
 | `description` | **yes** | non-empty one-liner; shown in the library and given to an agent on grant | `"Notes your agent can read and write."` |
 | `version` | **yes** | non-empty string; the element's own version | `"1.2.0"` |
-| `protocol` | **yes** | integer; the control-pipe major this element targets | `2` |
+| `protocol` | clapp only | integer; the control-pipe major this element targets. **Forbidden on a `cli`**, which speaks no pipe | `2` |
 | `publisher` | no | who published it; a package's id already implies its maker | `"acme"` |
 
 ### Presentation
@@ -143,6 +143,7 @@ validate and install.
 
 | | `clapp` | `cli` |
 |---|---|---|
+| `protocol` | **required** | **forbidden** — a cli speaks no control pipe |
 | `launch` | **required** | **forbidden** |
 | `connector.cli` (+ `cliBin`) | required | required |
 | `connector.signals` | optional | **forbidden** — a cli has no app→agent path |
@@ -175,12 +176,12 @@ check — the GUI scales every asset with `cover`, so a mismatch crops, never le
 | aspect | **1:1** (square) | **215:32** (≈ 6.72:1) — design canvas `860×128` | free |
 | min resolution | **512×512** | **3440×512** | — |
 | max resolution | 1024×1024 | — | **1920×1080** |
-| max file | 1 MiB | 2 MiB | **2 MB each** |
+| max file | 1 MiB | 2 MiB | **2 MiB each** |
 
 A photo that breaks a rule is **rejected at validate/install**, like any other manifest
 error, so a package cannot ship art the launcher would have to refuse to draw later.
 **Nothing is resized on the way in**: shipping a 4000px screenshot is telling the launcher
-to draw something it never checked. Four is a shelf, not an album, and the 2 MB ceiling is
+to draw something it never checked. Four is a shelf, not an album, and the 2 MiB ceiling is
 what keeps a depot downloadable on the connection somebody actually has.
 
 The banner renders as a **128px-tall, ≤860px-wide** hero, `cover`-cropped and centered,

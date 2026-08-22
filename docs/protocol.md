@@ -26,9 +26,18 @@ First thing in `main`, the app calls **`clatch_init(appId)`**:
 - **standalone** — `CLATCH_STANDALONE=1` → continue, no launcher (dev hatch).
 - **neither** → `exec clatch run <appId>` and exit.
 
-Injected env: `CLATCH_APP_ID`, `CLATCH_INSTANCE_ID`, `CLATCH_CONTROL_ADDR`,
-`CLATCH_INSTANCE_TOKEN`. No protocol version is injected — the major the app targets
-is the manifest's `protocol` ([`format.md`](format.md)), validated at install (Handshake).
+Injected into the child's environment, before its code runs:
+
+| Var | Meaning |
+|---|---|
+| `CLATCH_APP_ID` · `CLATCH_INSTANCE_ID` | the app's id from the registry, and this run's id |
+| `CLATCH_CONTROL_ADDR` | the socket path or pipe name to connect back to |
+| `CLATCH_INSTANCE_TOKEN` | a one-time secret proving this process is the spawned one |
+| `CLATCH_DATA_DIR` | `~/.clatch/appdata/<id>` — the **one** place an app writes durable state, so uninstall can erase the whole footprint. Survives uninstall; `purge` is what removes it |
+
+**No protocol version is injected.** The major the app targets is the manifest's
+`protocol` ([`format.md`](format.md)), validated at install — so a running instance is
+compatible by construction and there is no runtime negotiation.
 
 ## Transport
 
@@ -71,7 +80,7 @@ The app's first, and only, request:
 
 ```
 app  → clatch:  app.register { instanceToken }
-clatch → app:   { hostContext }                    // ok
+clatch → app:   { hostContext: { clatch: "0.4.5" } }   // ok
             |   error { code, message }             // IDENTITY_MISMATCH
 ```
 
@@ -82,6 +91,10 @@ Register carries **only the token** — the one thing Clatch cannot already know
 - the **protocol major** the app targets — the manifest's `protocol` says it, read at
   install (Clatch refuses to install an app whose major it does not support, so a
   running instance is compatible by construction — no runtime negotiation).
+
+`hostContext` is the **only** response body an app has to read. It carries the launcher's
+own version under `clatch`, and is forward-safe: treat unknown keys as data you may ignore,
+never as an error.
 
 The token proves the connecting process is the one Clatch spawned (it was injected
 into that child's environment, nowhere else). An app that never registers is killed

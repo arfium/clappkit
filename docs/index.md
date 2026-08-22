@@ -22,6 +22,7 @@ normative; these copies exist so an element can read the contract offline.
 | [`template.md`](template.md) | Forking the template into a new element. |
 | [`icons.md`](icons.md) | The mark: the library standard, and why the Dock needs its own inset. |
 | [`playbook.md`](playbook.md) | Rules learned by getting them wrong. Read before shipping. |
+| [`publishing.md`](publishing.md) | Getting an element into the Arfium marketplace. |
 
 ## Where to start
 
@@ -30,4 +31,4 @@ normative; these copies exist so an element can read the contract offline.
   launcher refuses.
 - **Building a clapp?** [`architecture.md`](architecture.md), then
   [`template.md`](template.md).
-- **About to ship?** [`playbook.md`](playbook.md)
+- **About to ship?** [`playbook.md`](playbook.md), then [`publishing.md`](publishing.md)
