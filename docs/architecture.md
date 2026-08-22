@@ -70,7 +70,7 @@ declaration is the authority, and Clatch drops a signal whose type disagrees wit
 
 | type | effect |
 |---|---|
-| `run` | wakes the agent now |
+| `run` | starts a turn on an **idle** agent. A busy one queues it — there is no preemption |
 | `context` | queued in order, injected at the agent's next turn |
 | `buffered` | one slot, latest wins; rides the user's next prompt |
 
@@ -78,7 +78,8 @@ Two behaviours explain most "my signal vanished" reports, both detailed in
 [`protocol.md`](protocol.md):
 
 - **The cut matrix.** A `run` signal only wakes an agent that was granted the app *and*
-  whose bind is run-open. A second agent's new bind is born run-cut.
+  whose bind is run-open. **Every bind is born all-open, `run` included**; narrowing is
+  the user's act in the cut matrix, never a default.
 - **Fan-out is all-or-nothing.** If any receiver has no room, the whole emission is
   refused and Clatch reports `app.toAgentRefused`. Surface that to the human — a
   full-inbox agent otherwise reads as a dead button.
@@ -92,9 +93,9 @@ app knows who invoked it — and an id survives a rename.
 
 ## Always-on apps
 
-Clatch ships no cron, no scheduler and no autostart. A timer or observer app is an
-ordinary clapp that, **while it is running**, keeps its own loop and emits a `run` signal
-when it fires. Nothing launches it at boot; missed-schedule catch-up and persistence are
+Clatch ships no cron, no scheduler and no app autostart — no clapp is started at boot.
+A timer or observer app is an ordinary clapp that, **while it is running**, keeps its own
+loop and emits a `run` signal when it fires. Missed-schedule catch-up and persistence are
 your policy. `clock-clapp` is this pattern.
 
 ## Where each concern lives

@@ -134,7 +134,7 @@ its intent checkably.
 
 | type | effect |
 |---|---|
-| `run` | triggers an agent turn now |
+| `run` | starts a turn on an **idle** agent; on a busy one it queues behind the in-flight turn — nothing is preempted |
 | `context` | queued, injected at the next turn boundary — in order, lossless |
 | `buffered` | replaces the agent's one chat-buffer slot; rides the user's next prompt |
 

@@ -66,8 +66,9 @@ clatch install ./<id>-*.clapp && clatch run <id>
 
 ## Always-on apps
 
-Clatch ships no scheduler and no autostart. An app that must act between user sessions
-keeps its own loop while running and emits a `run` signal when it fires. Persistence and
+Clatch ships no scheduler and no app autostart — no clapp is started at boot. An app
+that must act between user sessions keeps its own loop while running and emits a `run`
+signal when it fires. Persistence and
 missed-schedule policy are yours; Clatch gives you the wake and nothing more.
 `clock-clapp` is the worked example.
 

@@ -136,7 +136,7 @@ it, or whose id was never declared, is dropped rather than honoured.
 | field | required | rule | example |
 |---|---|---|---|
 | `id` | **yes** | the signal's stable name — not a per-emission number | `"note.added"` |
-| `type` | **yes** | `run` wakes the agent now · `context` is queued for its next turn · `buffered` rides the user's next prompt | `"context"` |
+| `type` | **yes** | `run` starts a turn on an idle agent, and queues on a busy one · `context` is queued for its next turn · `buffered` rides the user's next prompt | `"context"` |
 
 **There is no CLI-less element.** `connector.cli` is the floor for every type: the CLI
 is the constant surface an agent drives, so a manifest without one is rejected at
