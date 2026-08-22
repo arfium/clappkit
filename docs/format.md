@@ -198,9 +198,14 @@ narrow window. The `icon` is just the desktop app icon — no separate asset.
 
 ## Distribution
 
-A release is how a depot reaches a machine. `clatch install github:<owner>/<repo>` reads
-the repository's **latest release**, `…@<tag>` a named one, and picks **one asset** to
-install. Everything below is what makes that pick succeed.
+A release is how a depot reaches a machine. `clatch install <owner>/<repo>` reads the
+repository's **latest release**, `…@<tag>` a named one, and picks **one asset** to install.
+Everything below is what makes that pick succeed.
+
+**Three spellings, and only three**: `<owner>/<repo>[@<tag>]`, `github.com/<owner>/<repo>`,
+and the full `https://` URL. There is no `github:` prefix — that spelling exists in Clatch,
+but as the `source` recorded against an *installed* element, never as an argument to
+`install`, which refuses it.
 
 ### The host pair
 

@@ -46,8 +46,9 @@ gitignored. The committed sources are the truth; the depot is a copy you refresh
 ## 6. Distribution is a tag, not a folder
 
 ```sh
-clatch install github:<owner>/<repo>            # latest release
-clatch install github:<owner>/<repo>@v0.1.0     # a tag
+clatch install <owner>/<repo>                   # latest release
+clatch install <owner>/<repo>@v0.1.0            # a tag
+clatch install github.com/<owner>/<repo>        # the URL form, same thing
 clatch install ./<id>-macos-arm64.clapp         # a downloaded depot
 ```
 
