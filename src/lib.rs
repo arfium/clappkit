@@ -1,4 +1,4 @@
-//! The shared foundation every clapp is built on — see `docs/ARCHITECTURE.md`.
+//! The shared foundation every clapp is built on — see `docs/architecture.md`.
 //!
 //! A clapp is one binary with two roles over one state: a window for the human and a CLI
 //! for the agent. This crate is the plumbing both need:

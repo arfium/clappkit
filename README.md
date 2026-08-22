@@ -14,14 +14,15 @@ Each clapp carries this repo as a submodule, so a clone builds on its own:
 git clone --recurse-submodules …    # or: git submodule update --init
 ```
 
-## The house documents
+## Documentation
+
+Everything is in **[`docs/`](docs/)** — start at [`docs/index.md`](docs/index.md), which
+says which document answers what.
 
 They live here because every clapp already carries this repo — one copy, no drift.
 
 | | |
 |---|---|
-| [`docs/protocol.md`](docs/protocol.md) | **The Clapp Protocol.** Normative: manifest, wire, vocabulary. It wins over everything else. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The model — two channels, one state, two surfaces. |
-| [`docs/TEMPLATE.md`](docs/TEMPLATE.md) | Forking a template into a new clapp. |
-| [`docs/ICONS.md`](docs/ICONS.md) | The icon standard, and why the Dock needs its own. |
-| [`docs/PLAYBOOK.md`](docs/PLAYBOOK.md) | Shipping rules learned by getting them wrong. |
+| [`docs/format.md`](docs/format.md) | **The `.clapp` format** — the depot, every manifest field, the limits. |
+| [`docs/protocol.md`](docs/protocol.md) | **The control pipe** — how a running app and the launcher talk. |
+| [`docs/architecture.md`](docs/architecture.md) · [`docs/template.md`](docs/template.md) · [`docs/icons.md`](docs/icons.md) · [`docs/playbook.md`](docs/playbook.md) | The house standards. |

@@ -1,7 +1,7 @@
 //! The Dock/taskbar tile, set at runtime.
 //!
 //! **Two standards, one PNG.** `assets/icon.png` is full-bleed because that is the library
-//! house style (`docs/ICONS.md`), but the Dock expects a ~10–20% transparent margin — hand
+//! house style (`docs/icons.md`), but the Dock expects a ~10–20% transparent margin — hand
 //! it a full-bleed tile and it towers over every native neighbour. [`dock_icon`] insets to
 //! Apple's ~80% grid; a mark that already carries its own margin is left alone.
 //!

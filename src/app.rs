@@ -45,7 +45,7 @@ pub fn main_window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
 /// `include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/icon.png"))`; the bytes
 /// stay per-app because they ARE the app's identity, and they are run through
 /// [`crate::dock_icon`] first so a full-bleed shelf tile is inset to the native Dock grid
-/// (docs/ICONS.md). **Call on the MAIN THREAD** — Tauri's `setup` closure is the main thread.
+/// (docs/icons.md). **Call on the MAIN THREAD** — Tauri's `setup` closure is the main thread.
 pub fn apply_icon(app: &AppHandle, png: &[u8]) {
     crate::set_dock_icon(png);
     #[cfg(not(target_os = "macos"))]

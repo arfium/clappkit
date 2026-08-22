@@ -1,117 +1,19 @@
-# The Clapp Protocol
+# The control pipe
 
-The complete, frozen contract between **Clatch** (the launcher) and a **clapp** (a
-Clatch app): the **manifest** (static declaration, §1) and the **control pipe**
-(runtime, §2–§12). It is *not* the app's own GUI↔CLI channel — that is the app's, and
-Clatch never sees it.
+How a running clapp and Clatch talk: transport, framing, the vocabulary, signals, and the
+lifecycle. This is the **runtime** half of the contract.
 
-Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch
-cannot already know: no echoed id, no sequence number, no reserved-but-empty method.
+It is *not* the app's own GUI↔CLI channel — that one is the app's, and Clatch never sees
+it. The **static** half — the package and its manifest — is [`format.md`](format.md).
 
-> **This is a mirror, not the source.** The normative text lives in the Clatch
-> repository and wins wherever the two disagree: `reference/manifest.md` (§1),
-> `reference/elements.md` (the type matrix, and the package format), `reference/launch.md`
-> (the depot layout), `reference/protocol.md` (§2–§12) and `reference/clapp.md` (the frozen
-> connector). It is carried here so a clapp can read the contract offline; when you touch
-> it, diff against those five and nothing else.
+Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch cannot
+already know: no echoed id, no sequence number, no reserved-but-empty method.
 
-## 1. The manifest — `clatch.json`
+> **A mirror, not the source.** The normative text lives in the Clatch repository and wins
+> wherever the two disagree: `reference/protocol.md` and `reference/clapp.md` (the frozen
+> connector). Diff against those two and nothing else.
 
-The app's static declaration, read at **install**. It is the single source for
-everything Clatch knows about the app before it runs: identity, how to launch, and
-the agent-facing surface.
-
-```jsonc
-{
-  "manifestVersion": 1,                     // schema major
-  "id": "com.example.clapp",                // reverse-DNS, path-segment safe
-  "name": "Clapp",
-  "description": "…",                       // library entry + context-inserted on grant
-  "version": "0.1.0",
-  "protocol": 2,                            // control-pipe major this app targets (§6, §12)
-  "icon": "assets/icon.png",                // optional; banner/about/tags also optional
-  "launch": { "macos": "bin/clapp", "args": ["app"] },   // ≥1 per-OS command
-  "connector": {                            // agent-facing surface; every field optional
-    "cli": "clapp",                         // the CLI shorthand; `<cli> -h` is the manual
-    "cliBin": "bin/clapp",                  // optional; default bin/<cli>
-    "commands": [ { "name": "set", "about": "…" } ],    // permission grain: Bash(<cli> <name>:*)
-    "signals":  [ { "id": "poke", "type": "run" } ]     // declared vocabulary, typed (§8)
-  }
-}
-```
-
-| field | required | rule |
-|---|---|---|
-| `manifestVersion` | yes | integer, `1` |
-| `type` | no (default `clapp`) | `clapp` \| `cli`. **Never `skill`** — a skill is a Markdown file with front matter, not a package. The default keeps every pre-taxonomy manifest valid |
-| `id` | yes | reverse-DNS, path-segment safe (no `/`, `..`) |
-| `name` · `description` · `version` | yes | non-empty strings |
-| `protocol` | yes | integer; the control-pipe major this app targets (§6) |
-| `launch` | yes | ≥1 per-OS command (`macos`/`linux`/`windows`), optional `args` |
-| `icon` · `banner` · `about` · `tags` | no | presentation (library page) |
-| `publisher` | no | who published it. A package's reverse-DNS id implies its maker; a skill has no such id, so its ribbon is drawn from this and the name |
-| `photos` | no | up to 4 screenshots, in the order shown; paths relative to the content root |
-| `connector.cli` | **yes** | the CLI shorthand the agent types; `<cli> -h` is the whole manual |
-| `connector.cliBin` | no | a NAME relative to the content root, resolved with host executable extensions; default `bin/<cli>` |
-| `connector.commands` | no | `[{name, about}]` — the permission grain + library display; NOT the manual |
-| `connector.signals` | no | `[{id, type}]`, `type ∈ run \| context \| buffered` — declared and typed (§8) |
-| `connector.login` · `loginCheck` · `logout` | no | **`cli` only** — the tool's own auth verbs |
-
-**There is no CLI-less element.** `connector.cli` is the floor for every type: the CLI
-is the constant surface an agent drives, so a manifest without one is rejected at
-validate and install.
-
-### What each type may declare
-
-| | `clapp` | `cli` |
-|---|---|---|
-| `launch` | **required** | **forbidden** |
-| `connector.cli` (+ `cliBin`) | required | required |
-| `connector.signals` | optional | **forbidden** — a cli has no app→agent path |
-| `connector.login` / `loginCheck` / `logout` | **forbidden** — the app's GUI owns auth | optional |
-
-**Forbidden means rejected**, not ignored: a silent drop would let a package believe it
-declared something it never got.
-
-**A manifest may never say `skill`.** A skill has no `clatch.json` at all — it is a plain
-`.md` whose YAML front matter IS its manifest, and its `name` is its identity. One
-claiming the type is refused, with where its metadata belongs instead.
-
-The **advertised platforms are the `launch` OS keys** (a per-OS command is the claim
-"runs on that OS"); there is no separate `platforms` field, and a distribution ships one
-depot per platform. **Additive-only within a `manifestVersion`** — new optional fields
-only, never a new mandatory one; a launcher ignores fields it does not know. A breaking
-change bumps `manifestVersion`.
-
-### Presentation assets — `icon`, `banner` & `photos`
-
-Optional, but when shipped they carry a fixed standard (as the agent avatar does),
-checked at install for format and resolution. Aspect is a design target, not a hard
-check — the GUI scales every asset with `cover`, so a mismatch crops, never letterboxes.
-
-| | `icon` | `banner` | `photos` |
-|---|---|---|---|
-| role | app mark — library tiles + the detail hero (rendered 76px) + shortcuts | the library detail **hero** strip, behind the identity text | what the app LOOKS like: screenshots on the library page and a marketplace listing |
-| count | 1 | 1 | **at most 4**, shown in the manifest's order |
-| format | PNG (the desktop app icon) | PNG / JPEG / WebP | PNG / JPEG / WebP, by **magic bytes** — the extension follows the format, it does not declare it |
-| aspect | **1:1** (square) | **215:32** (≈ 6.72:1) — design canvas `860×128` | free |
-| min resolution | **512×512** | **3440×512** | — |
-| max resolution | 1024×1024 | — | **1920×1080** |
-| max file | 1 MiB | 2 MiB | **2 MB each** |
-
-A photo that breaks a rule is **rejected at validate/install**, like any other manifest
-error, so a package cannot ship art the launcher would have to refuse to draw later.
-**Nothing is resized on the way in**: shipping a 4000px screenshot is telling the launcher
-to draw something it never checked. Four is a shelf, not an album, and the 2 MB ceiling is
-what keeps a depot downloadable on the connection somebody actually has.
-
-The banner renders as a **128px-tall, ≤860px-wide** hero, `cover`-cropped and centered,
-under a **left-dark horizontal scrim** (white identity text sits over the left ~40%).
-So: keep focal imagery **center/right**; match the **6.72:1** ratio (the height is
-fixed — an off-ratio image loses its top/bottom); and expect the sides to crop on a
-narrow window. The `icon` is just the desktop app icon — no separate asset.
-
-## 2. Dependency & launch
+## Dependency & launch
 
 A clapp **runs only under Clatch** (the Steam↔game dependency). Clatch is the
 parent: it spawns the app and injects identity into the environment *before* the
@@ -126,32 +28,9 @@ First thing in `main`, the app calls **`clatch_init(appId)`**:
 
 Injected env: `CLATCH_APP_ID`, `CLATCH_INSTANCE_ID`, `CLATCH_CONTROL_ADDR`,
 `CLATCH_INSTANCE_TOKEN`. No protocol version is injected — the major the app targets
-is the manifest's `protocol` (§1), validated at install (§6).
+is the manifest's `protocol` ([`format.md`](format.md)), validated at install (Handshake).
 
-### The package — a `.clapp`
-
-**A `.clapp` packages the two types that have a payload**: a zip rooted at `clatch.json`,
-where the manifest's `type` inside selects the treatment — never the file extension, never
-the repo name. **A skill ships as its `.md`** through the same routes; a document needs no
-envelope.
-
-```
-com.example.clapp-macos-arm64.clapp
-  clatch.json              the manifest, identical across this version's depots
-  bin/<cli>                only the HOST platform's binaries (launch + cliBin)
-  assets/icon.png          icon, banner, up to 4 photos
-  <name>.clapp.sig         optional detached signature, checked before opening
-```
-
-**One platform per depot**, named `<id>-<os>-<arch>.clapp`. The launcher picks the host's
-on install, widest match last — `<os>-<arch>`, then `<os>-any`, then a cross-platform
-`<id>.clapp` for script-only apps — and no match is a loud error listing what the release
-ships. Only the host launch command is validated.
-
-**Nothing runs on install.** Opening one is file extraction only; the app executes later
-through `clatch run`.
-
-## 3. Transport
+## Transport
 
 Clatch is the **server**; the app connects back to `CLATCH_CONTROL_ADDR`. One
 endpoint **per instance**:
@@ -164,7 +43,7 @@ closed = instance gone (no polling, no heartbeat). Dev hatch: with no launcher, 
 the address by hand (`--control-addr <addr>` / `CLATCH_CONTROL_ADDR`) — the only
 place identity is self-asserted.
 
-## 4. Framing
+## Framing
 
 Each message is a **4-byte big-endian length `N`**, then **`N` bytes of UTF-8 JSON**.
 
@@ -175,7 +54,7 @@ connection** — it never drains or skips. `N` has one sanity bound (**1 MiB**; 
 messages are tiny); past it, close. There is no resync machinery. A clean
 end-of-stream means the peer closed.
 
-## 5. Envelope — JSON-RPC 2.0
+## Envelope — JSON-RPC 2.0
 
 Every message carries `"jsonrpc": "2.0"` and is one of:
 
@@ -186,7 +65,7 @@ Every message carries `"jsonrpc": "2.0"` and is one of:
 Ids are **per-direction**, starting at 1. Field names are **camelCase**. The stream
 is ordered, so there is **no sequence number** anywhere.
 
-## 6. Handshake
+## Handshake
 
 The app's first, and only, request:
 
@@ -199,7 +78,7 @@ clatch → app:   { hostContext }                    // ok
 Register carries **only the token** — the one thing Clatch cannot already know:
 
 - **which** instance connected — the per-instance socket says it (§3);
-- **who** the app is, and **what signals** it may emit — the manifest says it (§1);
+- **who** the app is, and **what signals** it may emit — the manifest says it ([`format.md`](format.md));
 - the **protocol major** the app targets — the manifest's `protocol` says it, read at
   install (Clatch refuses to install an app whose major it does not support, so a
   running instance is compatible by construction — no runtime negotiation).
@@ -208,7 +87,7 @@ The token proves the connecting process is the one Clatch spawned (it was inject
 into that child's environment, nowhere else). An app that never registers is killed
 at the spawn timeout and reported as an exit.
 
-## 7. Vocabulary
+## Vocabulary
 
 The whole surface. Adding a method is a deliberate act.
 
@@ -227,7 +106,7 @@ request from the app gets an error and Clatch keeps draining, so a misbehaving a
 can never wedge its own pipe. There are **no reserved methods** — an app knows its
 own focus (a native window event) and its own liveness *is* the socket.
 
-## 8. Signals — `app.toAgent`
+## Signals — `app.toAgent`
 
 A signal is a fire-and-forget message to the agent(s), carrying no durable state; the
 agent reads real state through the app's CLI.
@@ -248,10 +127,10 @@ its intent checkably.
 | `buffered` | replaces the agent's one chat-buffer slot; rides the user's next prompt |
 
 `target` is a list of agent **ids** — the immutable identity, never the mutable
-display `name` (§9). Empty/omitted = fan-out to every bound-and-uncut agent; non-empty
+display `name` (Connected agents). Empty/omitted = fan-out to every bound-and-uncut agent; non-empty
 = only those, **still intersected with the cut matrix** (an app can never reach an
 agent that did not grant it). Ids come from `CLATCH_AGENT_ID` (the id of the agent that
-invoked the app's CLI) or the `app.agents` roster (§9).
+invoked the app's CLI) or the `app.agents` roster (Connected agents).
 
 **All-or-nothing fan-out.** A `run`/`context` signal reaches **every** resolved agent
 or **none**: if any receiver cannot accept it (full inbox for `run`, full context
@@ -265,7 +144,7 @@ misses a signal the other got.
 `app.notify {text}` is a short line for the **user's Clatch chat** (distinct from the
 app's own GUI) — e.g. surfacing a refusal.
 
-## 9. Connected agents — `app.agents`
+## Connected agents — `app.agents`
 
 Clatch pushes the roster of agents **bound to this app** — a full snapshot, once
 after register and again on every change (a bind/unbind, rename, model switch, new
@@ -276,7 +155,7 @@ Each entry is `{id, name, backend, model?, avatar?}`, `avatar = {mime, path, wid
 height}` (an absolute, same-machine path). The roster is **only this app's own bound
 agents** — never other apps' agents, and never an agent's permissions, cuts, or the
 other apps it is bound to (the local trust boundary). It exists so the app can pick a
-`target` (§8) and map an id → its display name.
+`target` (Signals) and map an id → its display name.
 
 - **`id` is the key; `name` is for humans.** The `id` is immutable for the agent's
   whole lifetime; the `name` is unique but re-pointable — **same id + new name = the
@@ -288,7 +167,7 @@ other apps it is bound to (the local trust boundary). It exists so the app can p
   agent's CLI shell carries `CLATCH_AGENT_ID` (its immutable id), so "reply to whoever
   called me" needs no roster lookup — target that id. It stays valid across a rename.
 
-## 10. Lifecycle
+## Lifecycle
 
 - `app.ping` → reply `{ok:true}`.
 - `app.shutdown` → reply, then exit cleanly.
@@ -296,7 +175,7 @@ other apps it is bound to (the local trust boundary). It exists so the app can p
   fail-fast on a bad frame), a **wired** app exits rather than linger as a zombie;
   standalone dev stays up (no launcher to be orphaned from).
 
-## 11. Errors
+## Errors
 
 Errors exist only for **requests** (`app.register`). Signals are fire-and-forget: a
 violation (an undeclared id, a type mismatch) is **dropped** launcher-side and never
@@ -316,7 +195,7 @@ at **install** from the manifest's `protocol`, so a running instance is already
 compatible, and a launcher that rate-limited a local app would be throttling the human
 who launched it.
 
-## 12. Security & versioning
+## Security & versioning
 
 - **Local trust boundary.** Same OS user; Clatch owns the socket directory (`0700`).
   Identity is assigned by injection; the token only proves it.
