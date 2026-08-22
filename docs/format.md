@@ -59,22 +59,81 @@ the agent-facing surface.
 }
 ```
 
-| field | required | rule |
-|---|---|---|
-| `manifestVersion` | yes | integer, `1` |
-| `type` | no (default `clapp`) | `clapp` \| `cli`. **Never `skill`** — a skill is a Markdown file with front matter, not a package. The default keeps every pre-taxonomy manifest valid |
-| `id` | yes | reverse-DNS, path-segment safe (no `/`, `..`) |
-| `name` · `description` · `version` | yes | non-empty strings |
-| `protocol` | yes | integer; the control-pipe major this app targets (Handshake) |
-| `launch` | yes | ≥1 per-OS command (`macos`/`linux`/`windows`), optional `args` |
-| `icon` · `banner` · `about` · `tags` | no | presentation (library page) |
-| `publisher` | no | who published it. A package's reverse-DNS id implies its maker; a skill has no such id, so its ribbon is drawn from this and the name |
-| `photos` | no | up to 4 screenshots, in the order shown; paths relative to the content root |
-| `connector.cli` | **yes** | the CLI shorthand the agent types; `<cli> -h` is the whole manual |
-| `connector.cliBin` | no | a NAME relative to the content root, resolved with host executable extensions; default `bin/<cli>` |
-| `connector.commands` | no | `[{name, about}]` — the permission grain + library display; NOT the manual |
-| `connector.signals` | no | `[{id, type}]`, `type ∈ run \| context \| buffered` — declared and typed (Signals) |
-| `connector.login` · `loginCheck` · `logout` | no | **`cli` only** — the tool's own auth verbs |
+### Identity
+
+| field | required | rule | example |
+|---|---|---|---|
+| `manifestVersion` | **yes** | integer; the schema major | `1` |
+| `type` | no | `clapp` or `cli`, defaulting to `clapp`. **Never `skill`** — a skill is a Markdown file, not a package | `"cli"` |
+| `id` | **yes** | reverse-DNS, path-segment safe: no `/`, no `..` | `"com.acme.notes"` |
+| `name` | **yes** | non-empty; the display name | `"Notes"` |
+| `description` | **yes** | non-empty one-liner; shown in the library and given to an agent on grant | `"Notes your agent can read and write."` |
+| `version` | **yes** | non-empty string; the element's own version | `"1.2.0"` |
+| `protocol` | **yes** | integer; the control-pipe major this element targets | `2` |
+| `publisher` | no | who published it; a package's id already implies its maker | `"acme"` |
+
+### Presentation
+
+| field | required | rule | example |
+|---|---|---|---|
+| `icon` | no | path relative to the content root; must exist in the depot | `"assets/icon.png"` |
+| `banner` | no | the detail-page hero strip | `"assets/banner.png"` |
+| `photos` | no | up to 4 screenshots, shown in the manifest's order | `["assets/1.png", "assets/2.png"]` |
+| `about` | no | long-form text; `description` stays the one-liner | `"Notes keeps…"` |
+| `tags` | no | library tags | `["productivity"]` |
+
+Sizes and formats are bounded — see [Picture limits](#picture-limits) below.
+
+### `launch`
+
+Required on a **clapp**, forbidden on a **cli**. At least one OS key.
+
+```jsonc
+"launch": { "macos": "bin/notes", "windows": "bin/notes.exe", "args": ["app"] }
+```
+
+| key | required | rule | example |
+|---|---|---|---|
+| `macos` · `windows` · `linux` | at least one | the command, relative to the content root. **Each key present is the claim "runs on that OS"** | `"bin/notes"` |
+| `args` | no | arguments appended to whichever command was chosen | `["app"]` |
+
+### `connector`
+
+| field | required | rule | example |
+|---|---|---|---|
+| `cli` | **yes** | the shorthand an agent types. A NAME, not a filename | `"notes"` |
+| `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>` | `"bin/notes"` |
+| `commands` | no | the verbs an agent may be granted | see below |
+| `signals` | no | the notices the element may send its agent. **Forbidden on a `cli`** | see below |
+| `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **`cli` only** | `"auth login"` |
+
+#### `connector.commands[]`
+
+Each entry is separately grantable, so this list is the **permission grain** — not the
+manual. The manual is `<cli> -h`.
+
+```jsonc
+"commands": [ { "name": "add", "about": "add a note" } ]
+```
+
+| field | required | rule | example |
+|---|---|---|---|
+| `name` | **yes** | non-empty and unique within the list; the verb as typed | `"add"` |
+| `about` | **yes** | one line, shown beside the verb when granting | `"add a note"` |
+
+#### `connector.signals[]`
+
+Declared and typed. The declaration is the authority: a signal whose type disagrees with
+it, or whose id was never declared, is dropped rather than honoured.
+
+```jsonc
+"signals": [ { "id": "note.added", "type": "context" } ]
+```
+
+| field | required | rule | example |
+|---|---|---|---|
+| `id` | **yes** | the signal's stable name — not a per-emission number | `"note.added"` |
+| `type` | **yes** | `run` wakes the agent now · `context` is queued for its next turn · `buffered` rides the user's next prompt | `"context"` |
 
 **There is no CLI-less element.** `connector.cli` is the floor for every type: the CLI
 is the constant surface an agent drives, so a manifest without one is rejected at
@@ -102,7 +161,7 @@ depot per platform. **Additive-only within a `manifestVersion`** — new optiona
 only, never a new mandatory one; a launcher ignores fields it does not know. A breaking
 change bumps `manifestVersion`.
 
-### Presentation assets — `icon`, `banner` & `photos`
+### Picture limits
 
 Optional, but when shipped they carry a fixed standard (as the agent avatar does),
 checked at install for format and resolution. Aspect is a design target, not a hard
