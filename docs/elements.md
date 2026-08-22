@@ -1,8 +1,9 @@
 # Elements: clapp:app, clapp:cli, skill
 
 An **element** is the unit Clatch installs, lists and distributes: one identity, one card
-in the library. There are exactly **three types**, declared and never inferred. Two are
-packages — a folder with a `clatch.json`. The third is a document.
+in the library. There are exactly **three types**, declared and never inferred — the
+manifest says what a package is; nothing sniffs its contents to guess. Two are packages —
+a folder with a `clatch.json`. The third is a document.
 
 | | **clapp:app** | **clapp:cli** | **skill** |
 |---|---|---|---|
@@ -26,6 +27,10 @@ Inside a `clatch.json` you are **already in that namespace**, so the `type` fiel
 the short form and nothing else: `"clapp"` for a clapp:app, `"cli"` for a clapp:cli. A
 manifest that writes the qualified name is not installable — the launcher matches the
 short form exactly.
+
+The field is **optional and defaults to `"clapp"`**, so every manifest written before the
+taxonomy existed is still a valid clapp:app. Write it anyway: a type read from a default is
+a type nobody chose.
 
 `skill` names both the type and nothing in any manifest: a skill has no `clatch.json` at
 all, so the string never appears in one.

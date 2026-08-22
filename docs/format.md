@@ -24,16 +24,19 @@ com.example.clapp-macos-arm64.clapp
   clatch.json              the manifest, identical across this version's depots
   bin/<cli>                only the HOST platform's binaries (launch + cliBin)
   assets/icon.png          icon, banner, up to 4 photos
-  <name>.clapp.sig         optional detached signature, checked before opening
 ```
 
-**One platform per depot**, named `<id>-<os>-<arch>.clapp`. The launcher picks the host's
-on install, widest match last — `<os>-<arch>`, then `<os>-any`, then a cross-platform
-`<id>.clapp` for script-only apps — and no match is a loud error listing what the release
-ships. Only the host launch command is validated.
+**One platform per depot.** Which depot the host gets, and how a release must be laid out
+for it to be found, is [Distribution](#distribution) below. Only the host's launch command
+is validated — the other OS keys are claims about depots that live elsewhere.
+
+**There is no signature.** A depot carries no `.sig` and nothing checks one; a release's
+sibling `.sha256` proves the bytes arrived intact, not that anyone trustworthy made them.
+Authenticity is out of scope, deliberately, and no wording here should suggest otherwise.
 
 **Nothing runs on install.** Opening one is file extraction only; the app executes later
-through `clatch run`.
+through `clatch run`. Ceilings: **512 MiB** downloaded, **4 GiB** uncompressed.
+
 ## The manifest — `clatch.json`
 
 The app's static declaration, read at **install**. It is the single source for
@@ -157,11 +160,9 @@ declared something it never got.
 `.md` whose YAML front matter IS its manifest, and its `name` is its identity. One
 claiming the type is refused, with where its metadata belongs instead.
 
-The **advertised platforms are the `launch` OS keys** (a per-OS command is the claim
-"runs on that OS"); there is no separate `platforms` field, and a distribution ships one
-depot per platform. **Additive-only within a `manifestVersion`** — new optional fields
-only, never a new mandatory one; a launcher ignores fields it does not know. A breaking
-change bumps `manifestVersion`.
+**Additive-only within a `manifestVersion`** — new optional fields only, never a new
+mandatory one; a launcher ignores fields it does not know. A breaking change bumps
+`manifestVersion`.
 
 ### Picture limits
 
@@ -194,3 +195,86 @@ under a **left-dark horizontal scrim** (white identity text sits over the left ~
 So: keep focal imagery **center/right**; match the **6.72:1** ratio (the height is
 fixed — an off-ratio image loses its top/bottom); and expect the sides to crop on a
 narrow window. The `icon` is just the desktop app icon — no separate asset.
+
+## Distribution
+
+A release is how a depot reaches a machine. `clatch install github:<owner>/<repo>` reads
+the repository's **latest release**, `…@<tag>` a named one, and picks **one asset** to
+install. Everything below is what makes that pick succeed.
+
+### The host pair
+
+The launcher asks its own process what it is running on and maps it to two tokens. There
+are no others, and no aliases.
+
+| | values |
+|---|---|
+| `<os>` | `macos` · `windows` · `linux` |
+| `<arch>` | `arm64` (aarch64) · `x64` (x86_64) |
+
+**It is the launcher's own architecture, not the machine's.** An Intel Mac reports
+`macos-x64`; Apple Silicon reports `macos-arm64`. Rosetta does not enter into it — the
+launcher asks for what it is, so an arm64-only release simply has nothing to give an Intel
+host.
+
+### Asset naming
+
+```
+<anything>-<os>-<arch>.clapp        the host depot
+<anything>-<os>-<arch>.clapp.sha256 its checksum, optional but expected
+```
+
+The match is on the **suffix**, so the part before `-<os>-<arch>` is free. Use the
+element's id — `com.acme.notes-macos-arm64.clapp` — so a downloaded file still says what
+it is.
+
+### Which asset the host gets
+
+Widest match last. The first rule that hits wins:
+
+| | asset | when to ship it |
+|---|---|---|
+| 1 | `-<os>-<arch>.clapp` | the normal case: native code, one per platform |
+| 2 | `-<os>-any.clapp` | the depot has **no native code** for that OS, or one binary genuinely serves every arch on it |
+| 3 | a `.clapp` with **no** `-macos-`, `-windows-` or `-linux-` in its name | script-only, one file for everything |
+
+Rule 3 needs **exactly one** such asset. Two markerless `.clapp` files are ambiguous and
+the install fails rather than guessing. No match at all is a loud error that lists what the
+release actually ships.
+
+**`-any` is a claim about the bytes, not a wildcard.** Naming an x64 build `-windows-any`
+turns a clean "nothing for windows-arm64" into a crash after install. Ship `-any` only when
+there is nothing arch-specific inside.
+
+### Which platforms you owe
+
+**The OS keys in `launch` are the advertised platforms** — a per-OS command is the claim
+"runs on that OS", and there is no separate `platforms` field to disagree with it. So:
+
+> **Every OS key in `launch` must have a depot in the release.** A key with no depot is a
+> promise the launcher only discovers it cannot keep at install time, in front of the user.
+
+Drop the key or ship the depot. Those are the two ways to be correct.
+
+**Arch is not in the manifest at all.** `launch` names operating systems; the asset name is
+the only place arch is decided. A release therefore has to be read as a grid:
+
+| host | needs | if you ship only `macos-arm64` + `windows-x64` |
+|---|---|---|
+| Apple Silicon | `macos-arm64` | installs |
+| Intel Mac | `macos-x64` | **no match** — rule 2 and 3 do not save it |
+| Windows x64 | `windows-x64` | installs |
+| Windows on ARM | `windows-arm64`, then `windows-any` | **no match**, though the OS would have emulated an x64 binary happily |
+
+Two depots cover the machines people have today. Covering the other two corners is adding
+assets to the same release — the manifest does not change, because arch was never in it.
+
+### The release itself
+
+| | rule |
+|---|---|
+| tag | any tag the repository publishes a release for; `install` with no `@tag` takes **latest** |
+| assets | one `.clapp` per platform, plus an optional sibling `<asset>.sha256` |
+| `.sha256` | first whitespace-separated field is the lowercase hex digest. Present and mismatched is a hard failure; absent falls back to HTTPS alone |
+| what it proves | **arrival, not authorship.** There is no signature — see [The package](#the-package) |
+| manifest | **identical across every depot of one version**, except the per-platform paths (`launch`, `connector.cliBin`) that must differ |
