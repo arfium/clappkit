@@ -71,7 +71,7 @@ Clatch launcher validates and installs against them, and anything else that open
 cargo test --all-features
 ```
 
-67 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
+68 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
 see `ENV_LOCK` in `src/lib.rs`.
 
 ## License

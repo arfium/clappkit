@@ -11,8 +11,9 @@
 //! It is the narrower, honest one: **this app never widens a grant it was given.**
 //!
 //! **Receiving is quarantined.** Inbound bytes are a stranger's choice: [`store`] renames
-//! (never their filename), never marks executable, caps at [`MAX_BYTES`], and hands the
-//! agent the path plus the fact that it is untrusted.
+//! (never their filename), refuses any extension that runs ([`NEVER_EXECUTABLE`] — the
+//! exec bit is a unix-only defence and Windows has none), never marks executable, caps at
+//! [`MAX_BYTES`], and hands the agent the path plus the fact that it is untrusted.
 
 use anyhow::{bail, Context, Result};
 use std::path::{Component, Path, PathBuf};
@@ -142,12 +143,36 @@ pub fn outgoing(cli: &str, name: &str) -> Result<PathBuf> {
     Ok(real)
 }
 
+/// Extensions that make a file runnable **by name**, refused however harmless the bytes
+/// look. This is the Windows half of "never executable": there is no exec bit there, so a
+/// `.exe` in the inbox IS an executable — the `0o600` below is a unix-only defence and
+/// would have left the other platform with none. Applied everywhere rather than under a
+/// `cfg`, because a quarantine that holds different things on different machines is one
+/// nobody can reason about.
+///
+/// `PATHEXT`'s defaults, the script hosts Explorer maps by extension, the shortcut and
+/// installer types, and the unix double-click launchers. A denied extension is not an
+/// error — the file is stored as `.bin`, which is inert on every platform.
+const NEVER_EXECUTABLE: &[&str] = &[
+    // PATHEXT and the classic executables
+    "exe", "com", "bat", "cmd", "scr", "pif", "cpl", "msc", "msi", "msp", "msix", "appx",
+    // script hosts Explorer will run
+    "js", "jse", "vbs", "vbe", "wsf", "wsh", "hta", "ps1", "psm1", "psc1", "jar",
+    // loaded as code
+    "dll", "ocx", "sys", "drv",
+    // openers that run something else on a double-click
+    "lnk", "url", "reg", "inf", "scf", "chm", "application", "gadget",
+    // unix
+    "command", "sh", "bash", "zsh", "csh", "app", "desktop", "run",
+];
+
 /// Write received bytes into the quarantine, under a name WE choose.
 ///
 /// `suggested` is the sender's idea of a filename and is treated as hostile: only its
-/// extension is kept, and only when that extension is a short, plain-alphanumeric string.
-/// The stem is ours (`id`), so a peer cannot pick the path, collide with an existing file,
-/// smuggle separators, or hand us `.command`-style names that a double-click would run.
+/// extension is kept, and only when that extension is a short, plain-alphanumeric string
+/// that is not in [`NEVER_EXECUTABLE`]. The stem is ours (`id`), so a peer cannot pick the
+/// path, collide with an existing file, smuggle separators, or hand us a name that a
+/// double-click would run.
 pub fn store(cli: &str, id: &str, suggested: Option<&str>, bytes: &[u8]) -> Result<PathBuf> {
     if bytes.len() as u64 > MAX_BYTES {
         bail!(
@@ -160,6 +185,7 @@ pub fn store(cli: &str, id: &str, suggested: Option<&str>, bytes: &[u8]) -> Resu
         .and_then(|s| Path::new(s).extension().and_then(|e| e.to_str()))
         .map(str::to_ascii_lowercase)
         .filter(|e| e.len() <= 8 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .filter(|e| !NEVER_EXECUTABLE.contains(&e.as_str()))
         .unwrap_or_else(|| "bin".to_string());
 
     let stem: String = id
@@ -238,11 +264,32 @@ mod tests {
     #[test]
     fn a_received_name_cannot_choose_its_path() {
         let (_g, cli, _d) = scratch("store");
-        // A hostile "filename": separators, traversal, and an executable extension.
-        let p = store(&cli, "msg-1", Some("../../../evil.command"), b"data").unwrap();
+        // A hostile "filename": separators and traversal.
+        let p = store(&cli, "msg-1", Some("../../../evil.pdf"), b"data").unwrap();
         assert_eq!(p.parent().unwrap(), inbox(&cli).as_path());
-        assert_eq!(p.file_name().unwrap(), "msg-1.command".as_ref() as &std::ffi::OsStr);
+        assert_eq!(p.file_name().unwrap(), "msg-1.pdf".as_ref() as &std::ffi::OsStr);
         assert!(p.starts_with(inbox(&cli)), "must land in the quarantine");
+    }
+
+    /// The Windows half of "never executable". On unix the missing exec bit is the
+    /// defence; on Windows the EXTENSION is what runs, so it is the extension that has to
+    /// go — and the same file must land the same way on both, or the quarantine means two
+    /// different things depending on who received it.
+    #[test]
+    fn an_extension_that_runs_is_never_kept() {
+        let (_g, cli, _d) = scratch("exec");
+        for name in [
+            "invoice.pdf.exe", "setup.MSI", "a.bat", "a.cmd", "a.ps1", "a.vbs", "a.hta",
+            "a.lnk", "a.scr", "a.jar", "a.dll", "a.command", "a.sh", "a.desktop",
+        ] {
+            let p = store(&cli, "m", Some(name), b"d").unwrap();
+            assert_eq!(p.extension().unwrap(), "bin", "{name} kept a runnable extension");
+        }
+        // …and the ordinary case is untouched: this is a filter, not a rewrite.
+        for (name, want) in [("photo.JPG", "jpg"), ("doc.pdf", "pdf"), ("clip.mp4", "mp4")] {
+            let p = store(&cli, "m", Some(name), b"d").unwrap();
+            assert_eq!(p.extension().unwrap(), want);
+        }
     }
 
     #[test]
