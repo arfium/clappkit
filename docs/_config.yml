@@ -1,0 +1,6 @@
+# GitHub's own documentation theme. Nothing here is a design decision — primer IS the
+# typography you are already reading on github.com, so these pages look like the rest of
+# GitHub rather than like something somebody styled.
+theme: jekyll-theme-primer
+title: clappkit
+description: The Clapp Protocol, the package format, and the house standards.
