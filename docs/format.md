@@ -5,8 +5,8 @@ What a package contains and what its manifest may say: the depot layout, every f
 enforces before it will open one.
 
 This is the **static** half of the contract, read at **install**. What each type *is* —
-clapp, cli, skill — is [`elements.md`](elements.md); the runtime half a clapp speaks is
-[`protocol.md`](protocol.md).
+clapp:app, clapp:cli, skill — is [`elements.md`](elements.md); the runtime half a clapp:app
+speaks is [`protocol.md`](protocol.md).
 
 > **This is the source of truth.** Two implementations follow it — the Clatch launcher,
 > which validates and installs, and the Arfium marketplace, which lists and serves. Where
@@ -65,12 +65,12 @@ the agent-facing surface.
 | field | required | rule | example |
 |---|---|---|---|
 | `manifestVersion` | **yes** | integer; the schema major | `1` |
-| `type` | no | `clapp` or `cli`, defaulting to `clapp`. **Never `skill`** — a skill is a Markdown file, not a package | `"cli"` |
+| `type` | no | the element's kind in **short form**: `"clapp"` for a clapp:app, `"cli"` for a clapp:cli. Defaults to `"clapp"`. **Never `skill`**, and never the qualified name — inside a `clatch.json` the `clapp:` namespace is already implied | `"cli"` |
 | `id` | **yes** | reverse-DNS, path-segment safe: no `/`, no `..` | `"com.acme.notes"` |
 | `name` | **yes** | non-empty; the display name | `"Notes"` |
 | `description` | **yes** | non-empty one-liner; shown in the library and given to an agent on grant | `"Notes your agent can read and write."` |
 | `version` | **yes** | non-empty string; the element's own version | `"1.2.0"` |
-| `protocol` | clapp only | integer; the control-pipe major this element targets. **Forbidden on a `cli`**, which speaks no pipe | `2` |
+| `protocol` | clapp:app only | integer; the control-pipe major this element targets. **Forbidden on a clapp:cli**, which speaks no pipe | `2` |
 | `publisher` | no | who published it; a package's id already implies its maker | `"acme"` |
 
 ### Presentation
@@ -87,7 +87,7 @@ Sizes and formats are bounded — see [Picture limits](#picture-limits) below.
 
 ### `launch`
 
-Required on a **clapp**, forbidden on a **cli**. At least one OS key.
+Required on a **clapp:app**, forbidden on a **clapp:cli**. At least one OS key.
 
 ```jsonc
 "launch": { "macos": "bin/notes", "windows": "bin/notes.exe", "args": ["app"] }
@@ -105,8 +105,8 @@ Required on a **clapp**, forbidden on a **cli**. At least one OS key.
 | `cli` | **yes** | the shorthand an agent types. A NAME, not a filename | `"notes"` |
 | `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>` | `"bin/notes"` |
 | `commands` | no | the verbs an agent may be granted | see below |
-| `signals` | no | the notices the element may send its agent. **Forbidden on a `cli`** | see below |
-| `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **`cli` only** | `"auth login"` |
+| `signals` | no | the notices the element may send its agent. **Forbidden on a clapp:cli** | see below |
+| `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **clapp:cli only** | `"auth login"` |
 
 #### `connector.commands[]`
 
@@ -142,12 +142,13 @@ validate and install.
 
 ### What each type may declare
 
-| | `clapp` | `cli` |
+| | **clapp:app** | **clapp:cli** |
 |---|---|---|
-| `protocol` | **required** | **forbidden** — a cli speaks no control pipe |
+| `type` | `"clapp"` (or absent) | `"cli"` |
+| `protocol` | **required** | **forbidden** — it speaks no control pipe |
 | `launch` | **required** | **forbidden** |
 | `connector.cli` (+ `cliBin`) | required | required |
-| `connector.signals` | optional | **forbidden** — a cli has no app→agent path |
+| `connector.signals` | optional | **forbidden** — it has no app→agent path |
 | `connector.login` / `loginCheck` / `logout` | **forbidden** — the app's GUI owns auth | optional |
 
 **Forbidden means rejected**, not ignored: a silent drop would let a package believe it

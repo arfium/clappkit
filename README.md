@@ -53,7 +53,7 @@ answers what. One copy, carried by every clapp.
 
 | | |
 |---|---|
-| [`elements.md`](docs/elements.md) | **The three types** — clapp, cli, skill |
+| [`elements.md`](docs/elements.md) | **The three types** — clapp:app, clapp:cli, skill |
 | [`format.md`](docs/format.md) | **The `.clapp` format** — the depot, every manifest field, the limits |
 | [`protocol.md`](docs/protocol.md) | **The control pipe** — how a running app and the launcher talk |
 | [`architecture.md`](docs/architecture.md) | The model: two channels, one state, two surfaces |

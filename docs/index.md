@@ -7,9 +7,9 @@ which are ours. When they disagree, the contract wins.
 
 | | |
 |---|---|
-| [`elements.md`](elements.md) | **The three types** — clapp, cli, skill: what each one is, what it ships, what it may and may not do. Start here. |
+| [`elements.md`](elements.md) | **The three types** — clapp:app, clapp:cli, skill: what each one is, what it ships, what it may and may not do. Start here. |
 | [`format.md`](format.md) | **The `.clapp` format** — the depot layout, every `clatch.json` field, the type matrix, the picture limits, per-platform depots. Read at install. |
-| [`protocol.md`](protocol.md) | **The control pipe** — how a running clapp and the launcher talk: transport, framing, vocabulary, signals, lifecycle, errors. |
+| [`protocol.md`](protocol.md) | **The control pipe** — how a running clapp:app and the launcher talk: transport, framing, vocabulary, signals, lifecycle, errors. |
 
 **These three are the source of truth.** Two implementations follow them — the Clatch
 launcher, which validates and installs, and the Arfium marketplace, which lists and serves.

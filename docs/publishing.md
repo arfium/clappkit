@@ -2,13 +2,13 @@
 
 Everything a publisher has to know, in one page.
 
-There are three things you can publish: a **clapp** and a **cli**, which live in your own
-GitHub repository, and a **skill**, which is one Markdown file. Nothing is uploaded to the
-marketplace except your store pictures.
+There are three things you can publish: a **clapp:app** and a **clapp:cli**, which live in
+your own GitHub repository, and a **skill**, which is one Markdown file. Nothing is uploaded
+to the marketplace except your store pictures.
 
 ---
 
-## A clapp
+## A clapp:app or clapp:cli
 
 ### 1. Your repository keeps the code
 
@@ -107,10 +107,13 @@ POST /v1/publisher/github
   "name": "Notes", "summary": "Notes your agent can read and write." }
 ```
 
-`kind` is `clapp` or `cli`. **A cli publishes the same way** — same repository pointer, same
-`.clapp` assets per platform, same pictures. What differs is the package inside: no `launch`,
-no signals, and its own auth verbs ([`format.md`](format.md) § What each type may
-declare). It gets a store page like anything else.
+`kind` takes the manifest's own short form — `"clapp"` for a clapp:app, `"cli"` for a
+clapp:cli — so the listing cannot disagree with the package it points at.
+
+**A clapp:cli publishes the same way**: same repository pointer, same `.clapp` assets per
+platform, same pictures. What differs is the package inside — no `launch`, no signals, and
+its own auth verbs ([`format.md`](format.md) § What each type may declare). It gets a store
+page like anything else.
 
 You get back a **state**:
 
