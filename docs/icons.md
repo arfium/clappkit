@@ -1,9 +1,8 @@
 # Icon standard
 
-The [Clapp Protocol](protocol.md#presentation-assets--icon--banner) fixes the **format** of
-`assets/icon.png`: square PNG, 512–1024 px, ≤ 1 MiB. This fixes the **design**, because
-icons sit side by side in the library — if one fills its tile and another floats at 70%,
-the shelf looks broken.
+[`format.md`](format.md#picture-limits) fixes the **format** of `assets/icon.png`: square
+PNG, 512–1024 px, ≤ 1 MiB. This fixes the **design**, because icons sit side by side in
+the library — if one fills its tile and another floats at 70%, the shelf looks broken.
 
 ## The rules
 
@@ -11,8 +10,11 @@ the shelf looks broken.
    (`assets/icon.svg`, or a render script). The mark is regenerated, never hand-traced.
 
 2. **Tiled icons are full-bleed.** The rounded tile fills the whole canvas; only the
-   corners are transparent. Radius is `0.225 × side` (≈230 px at 1024). This is the
-   default for any app with a coloured background.
+   corners are transparent. Radius is `0.225 × side` (≈230 px at 1024) — Apple's own
+   ratio, and the **Dock** is where your corner is actually seen. The Clatch library
+   re-rounds every tile to `0.26 × side` in CSS, icon and letter-tile alike, so the shelf
+   is uniform by the launcher's doing rather than yours. This is the default for any app
+   with a coloured background.
 
 3. **Transparent icons maximise the glyph** — no tile, mark at ~95–98% of canvas height,
    centred. A tall narrow mark won't fill the width; match the *height* so it carries the
