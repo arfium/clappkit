@@ -4,13 +4,13 @@ What a package contains and what its manifest may say: the depot layout, every f
 `clatch.json`, what each element type is allowed to declare, and the bounds a launcher
 enforces before it will open one.
 
-This is the **static** half of the contract, read at **install**. The runtime half — how a
-running app and the launcher talk — is [`protocol.md`](protocol.md).
+This is the **static** half of the contract, read at **install**. What each type *is* —
+clapp, cli, skill — is [`elements.md`](elements.md); the runtime half a clapp speaks is
+[`protocol.md`](protocol.md).
 
 > **A mirror, not the source.** The normative text lives in the Clatch repository and wins
 > wherever the two disagree: `reference/manifest.md` (the fields), `reference/elements.md`
-> (the type matrix), `reference/launch.md` (the depot layout). Diff against those three and
-> nothing else.
+> (the type matrix), `reference/launch.md` (the depot layout).
 
 ## The package
 

@@ -53,6 +53,7 @@ answers what. One copy, carried by every clapp.
 
 | | |
 |---|---|
+| [`elements.md`](docs/elements.md) | **The three types** — clapp, cli, skill |
 | [`format.md`](docs/format.md) | **The `.clapp` format** — the depot, every manifest field, the limits |
 | [`protocol.md`](docs/protocol.md) | **The control pipe** — how a running app and the launcher talk |
 | [`architecture.md`](docs/architecture.md) | The model: two channels, one state, two surfaces |
@@ -60,7 +61,7 @@ answers what. One copy, carried by every clapp.
 | [`icons.md`](docs/icons.md) | The mark, and why the Dock needs its own inset |
 | [`playbook.md`](docs/playbook.md) | Rules learned by getting them wrong |
 
-The two contract documents mirror the Clatch reference and name their sources at the top.
+The three contract documents mirror the Clatch reference and name their sources at the top.
 Clatch is normative; these copies exist so an element can read the contract offline.
 
 ## Tests
