@@ -61,9 +61,9 @@ answers what. One copy, carried by every clapp.
 | [`icons.md`](docs/icons.md) | The mark, and why the Dock needs its own inset |
 | [`playbook.md`](docs/playbook.md) | Rules learned by getting them wrong |
 
-The three contract documents are the **source of truth** for the element formats. Two
-implementations follow them — the Clatch launcher and the Arfium marketplace. Where an
-implementation disagrees, the implementation is the bug.
+The three contract documents are the **source of truth** for the element formats. The
+Clatch launcher validates and installs against them, and anything else that opens a
+`.clapp` reads it the same way. Where an implementation disagrees, it is the bug.
 
 ## Tests
 

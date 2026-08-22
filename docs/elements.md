@@ -45,10 +45,9 @@ type, not a missing feature.
 The field-by-field rules are in [`format.md`](format.md); the runtime half a clapp speaks
 is [`protocol.md`](protocol.md).
 
-> **This is the source of truth.** Two implementations follow it — the Clatch launcher,
-> which validates and installs, and the Arfium marketplace, which lists and serves. Where
-> an implementation disagrees with this document, the implementation is the bug. Changes
-> land here first.
+> **This is the source of truth.** Anything that opens a `.clapp` reads it as defined here
+> — the Clatch launcher first, which validates and installs. Where an implementation
+> disagrees with this document, the implementation is the bug. Changes land here first.
 
 ## clapp:app
 

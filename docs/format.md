@@ -8,10 +8,9 @@ This is the **static** half of the contract, read at **install**. What each type
 clapp:app, clapp:cli, skill — is [`elements.md`](elements.md); the runtime half a clapp:app
 speaks is [`protocol.md`](protocol.md).
 
-> **This is the source of truth.** Two implementations follow it — the Clatch launcher,
-> which validates and installs, and the Arfium marketplace, which lists and serves. Where
-> an implementation disagrees with this document, the implementation is the bug. Changes
-> land here first.
+> **This is the source of truth.** Anything that opens a `.clapp` reads it as defined here
+> — the Clatch launcher first, which validates and installs. Where an implementation
+> disagrees with this document, the implementation is the bug. Changes land here first.
 
 ## The package
 
@@ -180,10 +179,9 @@ check — the GUI scales every asset with `cover`, so a mismatch crops, never le
 | max resolution | 1024×1024 | — | **1920×1080** |
 | max file | 1 MiB | 2 MiB | **2 MiB each** |
 
-**These bounds are the only ones.** A surface that frames a picture differently — the
-library's wide hero, a squarer marketplace card — **crops to its own frame**; it does not
-ask the publisher for a second file at a second aspect. A banner is authored once at
-215:32, and every narrower frame is a crop of it.
+**One banner, one aspect.** The format carries a single banner at 215:32 and offers no
+second file at a second shape, so anything that draws it in a narrower frame is drawing a
+crop of that one.
 
 A photo that breaks a rule is **rejected at validate/install**, like any other manifest
 error, so a package cannot ship art the launcher would have to refuse to draw later.
