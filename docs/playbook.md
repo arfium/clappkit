@@ -258,8 +258,8 @@ it does not fire at all.
   lived in the window's code; the first agent on the CLI had to learn the word
   "restaurants" from a screenshot. Any enum a surface shows — chips, modes, filter names —
   belongs in the core and rides the snapshot, and a test should pin that the CLI's manual
-  names every entry. The report that found it: "gui'de tag enumu var ise cli de bu enumu
-  sunmalı ve birebir aynı çalışmalı."
+  names every entry. The report that found it put it plainly: if the GUI has an enum of
+  tags, the CLI must offer that same enum and behave identically.
 - **Case-fold what the map's editors type**: the first live supermarket wrote its hours
   `mo-su 09:00-21:00`. Parsers meet data, not specs.
 - **`src/preview.ts` renders the UI in a plain browser** against a fake snapshot. It is how
