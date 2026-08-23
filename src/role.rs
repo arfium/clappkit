@@ -63,7 +63,15 @@ where
         // THIS process must simply end (reference/launch.md, the Steam↔game dependency).
         Role::App => match crate::bootstrap(app_id) {
             Ok(true) => {}
-            Ok(false) => gui(),
+            Ok(false) => {
+                // Windows draws this window with a runtime that is NOT part of the app,
+                // and a machine without it fails inside the WebView2 loader — a modal
+                // with no path and no link. Check first, so the message names the 5 MB
+                // download instead. A no-op everywhere else, and the CLI role never
+                // reaches here because it needs no webview at all.
+                crate::webview::ensure(cli_name);
+                gui()
+            }
             Err(e) => die(cli_name, &e.to_string()),
         },
     }

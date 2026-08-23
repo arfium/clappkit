@@ -31,6 +31,7 @@ pub mod paths;
 pub mod role;
 pub mod snapshot;
 pub mod store;
+pub mod webview;
 pub mod window;
 
 /// The Tauri half of a clapp (`tauri` feature): icon, window verbs, the `asset` command

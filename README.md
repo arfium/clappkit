@@ -40,6 +40,7 @@ export { cmd, onState, useSnapshot } from "@clappkit";
 | `media` | The outbox/quarantine boundary for files an agent sends or receives |
 | `asset` · `window` · `snapshot` | Local images, window verbs, and the revision that orders the window's two writers |
 | `icon` | The Dock/taskbar tile — *feature `icon`, on by default* |
+| `webview` | Windows: prove there is a WebView2 runtime before Tauri looks for one |
 | `manifest` | This app's own `clatch.json`, read for the signals it declared |
 | `app` | The Tauri glue — *feature `tauri`, off by default* |
 
@@ -78,7 +79,7 @@ Clatch launcher validates and installs against them, and anything else that open
 cargo test --all-features
 ```
 
-72 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
+74 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
 see `ENV_LOCK` in `src/lib.rs`.
 
 ## License
