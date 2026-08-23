@@ -1,4 +1,0 @@
-# Private git dependencies (the clatch crates). libgit2 cannot use this machine's
-# ssh-agent; the git CLI can, and cargo says so itself in the failure it prints.
-[net]
-git-fetch-with-cli = true
