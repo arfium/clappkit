@@ -194,7 +194,7 @@ violation (an undeclared id, a type mismatch) is **dropped** launcher-side and n
 answered, so an app cannot be stalled or probed through its own misbehaviour.
 
 There are exactly two, and the numbers are what travel on the wire
-(`clatch-pipe`'s `ErrorCode`):
+(`clapp-pipe`'s `ErrorCode`):
 
 | code | number | when |
 |---|---|---|

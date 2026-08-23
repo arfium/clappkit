@@ -8,9 +8,9 @@
 //! own `wire` constants, so this stays in lockstep with Clatch.
 
 use anyhow::{bail, Result};
-use clatch_core::{SignalDecl, SignalType};
-use clatch_ipc::{connect, FrameLimits, Inbox, Peer, Response};
-use clatch_pipe::wire::method;
+use clapp_pipe::{SignalDecl, SignalType};
+use clapp_ipc::{connect, FrameLimits, Inbox, Peer, Response};
+use clapp_pipe::wire::method;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};

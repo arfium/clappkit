@@ -75,27 +75,36 @@ For a sidecar clapp, confirm the app spawns the **depot's own** `vendor/node`
 
 A private git dependency turns every clone, every CI run and every contributor into a
 credentials problem: a deploy key, a PAT in a secret, a submodule token, and a release that
-cannot be re-cut when the token expires. Vendor it instead.
+cannot be re-cut when the token expires.
 
-```toml
-# src-tauri/Cargo.toml — the crates.io/git coordinates stay; only the source moves.
-[patch."ssh://git@github.com/arfium/clatch.git"]
-clatch-core = { path = "../vendor/clatch/crates/clatch-core" }
-```
+We learned this the expensive way. clappkit — a **public** crate — depended on four crates
+from the launcher's private repository over `ssh://`. Nobody without a key could build a
+clapp, so every clapp carried a copy of the launcher's source in `vendor/` to get around
+it: 5,342 lines, of which two type definitions and one function were ever used. Three of
+those repositories were public by then, republishing that source with no licence.
 
-Copy the crates in at a **pinned tag**, keep a `scripts/vendor-clatch.sh` that refreshes
-the copy at a newer one, and record which tag is in there. Two proofs, and they are not
-interchangeable:
+Vendoring was the symptom. The rule is simpler:
+
+> **Ship an SDK, not your source.** A platform gives an app a binding to its wire. It does
+> not put the platform's own code inside every app that runs on it.
+
+So the binding moved here — `crates/clapp-ipc` (framing, transport, JSON-RPC) and
+`crates/clapp-pipe` (the control-pipe client and its vocabulary), beside the
+[`protocol.md`](protocol.md) that specifies them. clappkit depends on nothing private, and
+`vendor/` is gone from every clapp.
+
+If you find yourself vendoring, ask which side of the boundary the code belongs on before
+you copy it.
 
 ```sh
-cargo build --offline --locked   # LOCAL: nothing is fetched at all
-cargo fetch  --locked            # CI: a runner with no key resolves every dependency
+cargo fetch --locked   # a runner with no key resolves every dependency
 ```
 
-`--offline` also forbids crates.io, which a fresh runner has never downloaded — it passes
-on a developer's machine only because the registry cache is warm, so in CI it measures the
-machine rather than the claim. What CI can honestly assert is the keyless one: no ssh key
-exists there, so a patch that stopped redirecting would fail on authentication right then.
+That is the check CI can honestly make: no ssh key exists there, so a dependency that
+reached for one would fail on authentication right then. Not `--offline` — that also
+forbids crates.io, which a fresh runner has never downloaded, so it passes on a developer's
+machine only because the registry cache is warm and measures the machine rather than the
+claim.
 
 Then the workflow needs no secret at all. `secrets.*` is also not usable in a job-level
 `if:` — if you find yourself writing a `gate` job to work around that, you are still

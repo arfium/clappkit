@@ -16,7 +16,7 @@
 //! Where an OS difference is unavoidable it is written once and named: [`ipc::address`],
 //! [`paths::user_base`], [`store::atomic_write`].
 
-pub use clatch_core::{SignalDecl, SignalType};
+pub use clapp_pipe::{SignalDecl, SignalType};
 
 use anyhow::{bail, Result};
 
@@ -25,6 +25,7 @@ pub mod control;
 #[cfg(feature = "icon")]
 pub mod icon;
 pub mod ipc;
+pub mod manifest;
 pub mod media;
 pub mod paths;
 pub mod role;
@@ -49,7 +50,7 @@ pub use window::{WindowPolicy, WindowVerb};
 /// properly and **this process must exit now**; `Ok(false)` means you are wired (or in
 /// the `CLATCH_STANDALONE` dev hatch): continue. [`role::main_dispatch`] does this for you.
 pub fn bootstrap(app_id: &str) -> Result<bool> {
-    Ok(clatch_pipe::clatch_init(app_id)?)
+    Ok(clapp_pipe::clatch_init(app_id)?)
 }
 
 /// This app's signal declarations, read from its `clatch.json`, or an error saying
@@ -65,8 +66,7 @@ pub fn try_declared_signals() -> Result<Vec<SignalDecl>> {
     for candidate in manifest_candidates() {
         match std::fs::read_to_string(&candidate) {
             Ok(json) => {
-                return clatch_registry::Manifest::parse(&json)
-                    .map(|m| m.connector.signals)
+                return manifest::declared_signals(&json)
                     .map_err(|e| anyhow::anyhow!("{} failed to parse: {e}", candidate.display()));
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => looked.push(candidate),

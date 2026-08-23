@@ -1,8 +1,11 @@
+[workspace]
+members = ["crates/clapp-ipc", "crates/clapp-pipe"]
+
 [package]
 name = "clappkit"
 version = "0.1.0"
 edition = "2021"
-description = "Shared cross-platform foundation for Clatch apps (clapps): the control pipe (via clatch-pipe) + the app's own GUI<->CLI IPC (via clatch-ipc) + one-binary-two-roles dispatch, paths, atomic persistence and the Tauri glue."
+description = "The SDK every clapp is built on: the Clatch control pipe, the app's own GUI<->CLI IPC, one-binary-two-roles dispatch, paths, atomic persistence and the Tauri glue."
 license = "Apache-2.0"
 
 # What a clapp pays for. The CORE (control pipe, IPC, role dispatch, paths, store,
@@ -18,18 +21,16 @@ icon = ["dep:image", "dep:cocoa", "dep:objc"]
 # with `clappkit = { path = "…", features = ["tauri"] }`.
 tauri = ["dep:tauri", "icon"]
 
-# Depended on by every clapp so the plumbing lives in ONE place (DRY). The clatch
-# crates are consumed by relative path here; a published fork uses a git/crates.io dep.
+# Depended on by every clapp so the plumbing lives in ONE place (DRY).
 [dependencies]
-# Pinned to a RELEASED clatch, not to whatever is in a sibling checkout. The path
-# dependency this replaces only resolved when clatch happened to sit next to the
-# clapps directory — so a clapp cloned on its own could not build, and the one that
-# could was silently compiled against uncommitted launcher state. Bump the tag
-# deliberately; that is the point.
-clatch-pipe = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
-clatch-core = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
-clatch-ipc = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
-clatch-registry = { git = "ssh://git@github.com/arfium/clatch.git", tag = "v0.4.3" }
+# The wire, ours. These were four crates pulled from the launcher's own private
+# repository over ssh://, which meant no CI runner and no fresh clone could build a clapp
+# without a key — so every clapp carried a copy of the launcher's source in vendor/ to get
+# around it. A platform ships an SDK; it does not ship its client's source inside every
+# app. docs/protocol.md is the contract and it lives here, so the binding that speaks it
+# lives here too.
+clapp-ipc = { path = "crates/clapp-ipc", version = "0.1.0" }
+clapp-pipe = { path = "crates/clapp-pipe", version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

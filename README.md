@@ -26,6 +26,11 @@ export { cmd, onState, useSnapshot } from "@clappkit";
 
 ## What is in it
 
+| Crate | |
+|---|---|
+| `crates/clapp-ipc` | The substrate: length-prefixed JSON frames and a JSON-RPC 2.0 pump over a unix socket or a Windows named pipe |
+| `crates/clapp-pipe` | The **control-pipe binding** — `clatch_init`, register, signals, and the vocabulary the wire carries. The SDK half a launcher talks to |
+
 | Module | |
 |---|---|
 | `role` | One binary, two roles — which one this process is |
@@ -35,10 +40,12 @@ export { cmd, onState, useSnapshot } from "@clappkit";
 | `media` | The outbox/quarantine boundary for files an agent sends or receives |
 | `asset` · `window` · `snapshot` | Local images, window verbs, and the revision that orders the window's two writers |
 | `icon` | The Dock/taskbar tile — *feature `icon`, on by default* |
+| `manifest` | This app's own `clatch.json`, read for the signals it declared |
 | `app` | The Tauri glue — *feature `tauri`, off by default* |
 
 The core is GUI-free and dependency-light: a headless clapp never compiles a PNG codec,
-AppKit or a webview.
+AppKit or a webview. **Nothing here is private** — clappkit depends on no closed repository,
+so a clone builds with no key, no token and no submodule credentials.
 
 `web/` is the front-end half — the same two channels, the avatar cache and the snapshot
 wiring, as plain TypeScript behind a Vite alias.
@@ -71,7 +78,7 @@ Clatch launcher validates and installs against them, and anything else that open
 cargo test --all-features
 ```
 
-68 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
+72 tests. Several set `CLATCH_DATA_DIR`, which is process-global, so they share one lock —
 see `ENV_LOCK` in `src/lib.rs`.
 
 ## License

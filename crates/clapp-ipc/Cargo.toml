@@ -1,0 +1,16 @@
+[package]
+name = "clapp-ipc"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Clapp IPC substrate: JSON-RPC 2.0 framing over unix domain sockets and Windows named pipes"
+repository = "https://github.com/arfium/clappkit"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

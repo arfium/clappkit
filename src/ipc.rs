@@ -9,7 +9,7 @@
 //! agent's CLI role runs [`request`].
 
 use anyhow::Result;
-use clatch_ipc::{connect, frame, FrameLimits, Listener};
+use clapp_ipc::{connect, frame, FrameLimits, Listener};
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
@@ -180,7 +180,7 @@ fn already_running(addr: &str) -> anyhow::Error {
 
 /// Is a live server holding this pipe name? `Some(true)` yes, `Some(false)` the name is
 /// free, `None` we cannot tell (let `bind` decide). A single non-retrying dial — NOT
-/// `clatch_ipc::connect`, which retries `ERROR_PIPE_BUSY` for five seconds and would turn
+/// `clapp_ipc::connect`, which retries `ERROR_PIPE_BUSY` for five seconds and would turn
 /// every launch into a five-second stall. `ERROR_PIPE_BUSY` is itself proof of life: the
 /// name exists and every instance is occupied.
 #[cfg(windows)]
