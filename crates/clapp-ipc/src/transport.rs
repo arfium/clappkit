@@ -78,10 +78,10 @@ mod windows {
     /// All server instances busy: the accept-window (B6). Retried. A missing
     /// name (`ERROR_FILE_NOT_FOUND`) is NOT retried: while a server lives, its
     /// name always has at least one instance (the connected one counts), so an
-    /// absent name means no server, and stalling on it would tax every cold
-    /// `clatch` start with a five-second wait for a daemon that is not there.
-    /// The boot race (client dials while the daemon binds) is the caller's:
-    /// `bootstrap::connect_or_start` already polls with its own deadline.
+    /// absent name means no server is there, and stalling on that would tax every
+    /// cold start with a five-second wait for something that does not exist. A
+    /// boot race — dialling while the other end is still binding — belongs to the
+    /// caller, which knows its own deadline.
     const ERROR_PIPE_BUSY: i32 = 231;
 
     /// A per-instance named-pipe listener. Compile-checked on Windows only; the
@@ -95,10 +95,9 @@ mod windows {
         pub fn bind(addr: &str) -> io::Result<Self> {
             // NO first-instance reservation: a pipe NAME lives while any handle
             // to any of its instances does, including a dead server's still-
-            // connected clients, so a reserved name blocks a legitimate rebind
-            // (a daemon restart under a lingering GUI watcher). Ownership is not
-            // the transport's job: the daemon's singleton is a lock file
-            // (clatch-daemon::singleton), and binding here is pure transport.
+            // connected clients, so a reserved name blocks a legitimate rebind —
+            // a restart under a lingering watcher. Deciding who OWNS a name is a
+            // lock's job, not a transport's; binding here is pure transport.
             let first = ServerOptions::new().create(addr)?;
             Ok(Self {
                 addr: addr.into(),

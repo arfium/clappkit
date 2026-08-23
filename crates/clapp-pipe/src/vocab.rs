@@ -12,8 +12,6 @@ use std::fmt;
 /// The launcher binary to re-exec through, injected at spawn.
 pub const ENV_BIN: &str = "CLATCH_BIN";
 
-/// The Windows named-pipe namespace the per-run control pipe lives in.
-pub const PIPE_PREFIX: &str = r"\\.\pipe\clatch-";
 
 /// Ids become path segments (`apps/<id>`), so one that crosses a trust boundary must be
 /// checked before it is used as a path. Construction stays infallible; validation is a gate

@@ -1,4 +1,4 @@
-//! The launch bootstrap (reference/launch.md): [`clatch_init`], the
+//! The launch bootstrap (docs/format.md): [`clatch_init`], the
 //! `SteamAPI_RestartAppIfNecessary` equivalent. An app calls it first thing in
 //! `main`; it guarantees the app runs only under Clatch by relaunching itself
 //! through the launcher when it was started any other way. It is env checks plus
@@ -16,7 +16,7 @@ pub const ENV_STANDALONE: &str = "CLATCH_STANDALONE";
 /// shared [`crate::vocab::ENV_BIN`]; this re-export keeps the pipe crate's API.
 pub const ENV_BIN: &str = crate::vocab::ENV_BIN;
 
-/// Ensure this process runs under Clatch (reference/launch.md), returning whether it
+/// Ensure this process runs under Clatch (docs/format.md), returning whether it
 /// handed off. **`Ok(true)` means the caller must exit now**, Clatch is relaunching
 /// the installed copy.
 ///

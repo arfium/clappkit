@@ -1,56 +1,46 @@
-//! Length-prefixed JSON framing (reference/protocol.md, section Framing): a
+//! Length-prefixed JSON framing (docs/protocol.md, section Framing): a
 //! 4-byte big-endian length, then a UTF-8 JSON body. Generic over any byte stream
 //! so the same codec serves both ends and every transport.
 //!
-//! POLICY IS PER CHANNEL ([`FrameLimits`]). The admin channel carries real agent
-//! conversations, so its reader is ROBUST: one bad frame never kills a healthy
-//! stream (an oversized frame is drained, a malformed body discarded, reading
-//! continues); only a length beyond the hard ceiling is fatal. The control pipe
-//! carries tiny messages between two Clatch ends, so its reader is FAIL-FAST
-//! (reference/protocol.md § Framing): a zero-length, oversized, or unparseable
-//! frame is a desync bug and the reader closes the connection instead of skipping.
+//! POLICY IS PER CHANNEL ([`FrameLimits`]). The control pipe carries tiny
+//! messages and its reader is FAIL-FAST (docs/protocol.md § Framing): a
+//! zero-length, oversized, or unparseable frame is a desync bug, so the reader
+//! closes instead of skipping. Your app's own GUI<->CLI channel is yours to
+//! shape - clear `fail_fast` and one bad frame is drained rather than fatal,
+//! which is what a channel carrying large or third-party payloads wants.
 
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{self, ErrorKind};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-/// The largest frame a reader accepts. Same-user transports carrying real
-/// agent conversations (a single timeline entry holds a whole long message),
-/// so this is a guard against absurdity, not a message-size policy.
+/// The ceiling any reader will accept. Same-user transports, so this guards
+/// against absurdity rather than setting a message-size policy; a channel picks
+/// its real bound in its own [`FrameLimits`].
 pub const MAX_FRAME: usize = 64 << 20; // 64 MiB
 
 /// A claimed length beyond this is not an oversized message, it is a broken
 /// stream (desynced framing / garbage): the connection dies.
 const CORRUPT_LEN: usize = 1 << 30; // 1 GiB
 
-/// Per-channel framing policy (reference/protocol.md § Framing). The reader's two
+/// Per-channel framing policy (docs/protocol.md § Framing). The reader's two
 /// dials: the largest frame it accepts, and whether a bad frame is fatal.
 #[derive(Debug, Clone, Copy)]
 pub struct FrameLimits {
     /// The largest frame the reader accepts.
     pub max_frame: usize,
-    /// Fail-fast: a bad frame (zero-length, oversized, or unparseable) closes the
-    /// connection instead of being skipped. The control pipe sets this; the admin
-    /// channel does not.
+    /// Fail-fast: a bad frame (zero-length, oversized, or unparseable) closes
+    /// the connection instead of being skipped. The control pipe sets it. Clear
+    /// it on a channel of your own that should survive one bad frame.
     pub fail_fast: bool,
 }
 
 impl FrameLimits {
     /// The control pipe: tiny messages, both ends Clatch, so a bad frame is a
-    /// framing bug and the reader closes (reference/protocol.md § Framing).
+    /// framing bug and the reader closes (docs/protocol.md § Framing).
     pub const fn control() -> Self {
         Self {
             max_frame: 1 << 20, // 1 MiB
             fail_fast: true,
-        }
-    }
-
-    /// The admin channel (daemon <-> client/GUI): real agent conversation frames
-    /// ride it, so a huge or unparseable one is skipped, never fatal.
-    pub const fn admin() -> Self {
-        Self {
-            max_frame: MAX_FRAME,
-            fail_fast: false,
         }
     }
 }
@@ -84,13 +74,13 @@ where
 }
 
 /// Read the next DELIVERABLE frame under `limits`, or `None` at a clean end of
-/// stream (the peer closed, so the instance is gone, reference/protocol.md
+/// stream (the peer closed, so the instance is gone, docs/protocol.md
 /// § Transport).
 ///
 /// - **Fail-fast** (the control pipe): a zero-length, oversized, or unparseable
 ///   frame is a desync bug between two Clatch ends, so it returns an error and the
 ///   caller closes the connection. No skipping, no resync.
-/// - **Robust** (the admin channel): an oversized frame (> `limits.max_frame`) is
+/// - **Robust** (`fail_fast` cleared): an oversized frame (> `limits.max_frame`) is
 ///   drained and skipped, an unparseable body is skipped; both are logged and
 ///   reading continues (the framing stays intact). Only a length past the hard
 ///   ceiling (1 GiB) is a corrupt stream and errors.
@@ -165,6 +155,13 @@ async fn drain<R: AsyncRead + Unpin>(r: &mut R, len: usize) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The lenient dial, as an app's own channel would set it: the reader
+    /// drains what it cannot use and keeps going.
+    const LENIENT: FrameLimits = FrameLimits {
+        max_frame: MAX_FRAME,
+        fail_fast: false,
+    };
     use serde_json::json;
 
     #[tokio::test]
@@ -174,9 +171,9 @@ mod tests {
             .await
             .unwrap();
         drop(a); // clean close after one frame
-        let got: Option<serde_json::Value> = read(&mut b, FrameLimits::admin()).await.unwrap();
+        let got: Option<serde_json::Value> = read(&mut b, LENIENT).await.unwrap();
         assert_eq!(got, Some(json!({"hello": 1})));
-        let eof: Option<serde_json::Value> = read(&mut b, FrameLimits::admin()).await.unwrap();
+        let eof: Option<serde_json::Value> = read(&mut b, LENIENT).await.unwrap();
         assert_eq!(eof, None, "closed stream reads as None, not an error");
     }
 
@@ -188,7 +185,7 @@ mod tests {
         let msg = json!({ "text": "x".repeat(3 << 20) });
         let expected = msg.clone();
         let writer = tokio::spawn(async move { write(&mut a, &msg, MAX_FRAME).await });
-        let got: Option<serde_json::Value> = read(&mut b, FrameLimits::admin()).await.unwrap();
+        let got: Option<serde_json::Value> = read(&mut b, LENIENT).await.unwrap();
         writer.await.unwrap().unwrap();
         assert_eq!(got, Some(expected));
     }
@@ -219,7 +216,7 @@ mod tests {
                 .await
                 .unwrap();
         });
-        let got: Option<serde_json::Value> = read(&mut b, FrameLimits::admin()).await.unwrap();
+        let got: Option<serde_json::Value> = read(&mut b, LENIENT).await.unwrap();
         writer.await.unwrap();
         assert_eq!(
             got,
@@ -234,7 +231,7 @@ mod tests {
         // A length no honest peer writes: past the hard ceiling, the stream
         // itself is not credible (we are not looking at framing anymore).
         a.write_all(&u32::MAX.to_be_bytes()).await.unwrap();
-        let err = read::<_, serde_json::Value>(&mut b, FrameLimits::admin())
+        let err = read::<_, serde_json::Value>(&mut b, LENIENT)
             .await
             .unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
@@ -242,12 +239,12 @@ mod tests {
 
     #[tokio::test]
     async fn a_control_reader_fails_fast_on_a_bad_frame() {
-        // The control pipe is fail-fast (reference/protocol.md § Framing): where
-        // the admin reader would skip an oversized or unparseable frame, the
+        // The control pipe is fail-fast (docs/protocol.md § Framing): where
+        // a lenient reader would skip an oversized or unparseable frame, the
         // control reader treats it as a desync and errors, so the caller closes.
         let ctrl = FrameLimits::control();
 
-        // Oversized for the control bound (but well under the admin bound): skipped
+        // Oversized for the control bound (but under the ceiling): skipped
         // there, fatal here.
         let (mut a, mut b) = tokio::io::duplex(64 * 1024);
         let over = (ctrl.max_frame + 8) as u32;

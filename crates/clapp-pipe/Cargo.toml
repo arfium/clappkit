@@ -11,7 +11,6 @@ clapp-ipc = { path = "../clapp-ipc", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "time", "macros"] }
-getrandom = "0.2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -82,6 +82,13 @@ fn pad_full_bleed(png: &[u8]) -> Option<Vec<u8>> {
 /// [`dock_icon`] first, so a full-bleed tile is inset to the native Dock size. **Call on
 /// the main thread** (Tauri's `setup` closure is the main thread). A no-op off macOS.
 #[cfg(target_os = "macos")]
+// Both allows are about the DEPENDENCY, not this function. `cocoa`/`objc` are
+// deprecated in favour of objc2, and their `msg_send!`/`class!` macros still
+// expand to the retired `feature = "cargo-clippy"` cfg. The pair is kept
+// deliberately (see Cargo.toml: version-stable, and it coexists with tauri's
+// objc2), and an SDK that greets every clapp author with sixteen warnings from
+// someone else's macro teaches them to stop reading warnings.
+#[allow(deprecated, unexpected_cfgs)]
 pub fn set_dock_icon(png: &[u8]) {
     use cocoa::base::{id, nil};
     use cocoa::foundation::NSData;

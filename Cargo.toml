@@ -47,3 +47,9 @@ tauri = { version = "2", features = ["image-png"], optional = true }
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = { version = "0.26", optional = true }
 objc = { version = "0.2", optional = true }
+
+[lints.rust]
+# `objc`'s `msg_send!` / `class!` still expand to the retired
+# `feature = "cargo-clippy"` cfg. Declared EXPECTED rather than allowed outright,
+# so the lint keeps catching a real feature typo of ours.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }

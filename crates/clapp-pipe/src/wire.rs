@@ -1,4 +1,4 @@
-//! The App control pipe vocabulary (reference/protocol.md § The API): the method
+//! The App control pipe vocabulary (docs/protocol.md § The API): the method
 //! names, the parameter payloads, and the error codes carried over the generic
 //! JSON-RPC envelope (`clapp_ipc`). The app sends `register` plus fire-and-forget
 //! notifications; Clatch sends callbacks. Adding a method is a deliberate act.
@@ -21,17 +21,17 @@ pub mod method {
     /// clatch -> app, an on-demand health probe (never a timer).
     pub const PING: &str = "app.ping";
     /// clatch -> app, the app's connected agents (notification), pushed once
-    /// after register and again on every change (reference/protocol.md
+    /// after register and again on every change (docs/protocol.md
     /// § Connected agents). Params [`AgentsParams`](super::AgentsParams).
     pub const AGENTS: &str = "app.agents";
     /// clatch -> app, an all-or-nothing fan-out was refused whole (notification):
     /// a receiver could not accept a `run`/`context` signal, so nothing was
-    /// delivered (reference/protocol.md § Signals). Params
+    /// delivered (docs/protocol.md § Signals). Params
     /// [`ToAgentRefusedParams`](super::ToAgentRefusedParams).
     pub const TO_AGENT_REFUSED: &str = "app.toAgentRefused";
 }
 
-/// The control pipe's error kinds (reference/protocol.md § Error codes). Errors
+/// The control pipe's error kinds (docs/protocol.md § Error codes). Errors
 /// exist only for requests (`register`); signals are fire-and-forget and a
 /// violation is dropped launcher-side, never answered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,7 +63,7 @@ impl ErrorCode {
     }
 }
 
-/// `app.register` params (reference/protocol.md § Handshake). Only the token: the
+/// `app.register` params (docs/protocol.md § Handshake). Only the token: the
 /// per-instance socket already names the instance, the manifest holds the app's
 /// identity and signals, and the protocol major is validated at install. The token
 /// is the one thing Clatch cannot already know (it proves "I am the process you
@@ -74,7 +74,7 @@ pub struct RegisterParams {
     pub instance_token: String,
 }
 
-/// `app.toAgent` params (reference/protocol.md § Signals): a declared signal `id`,
+/// `app.toAgent` params (docs/protocol.md § Signals): a declared signal `id`,
 /// the `type` stamped from its manifest declaration (re-validated launcher-side and
 /// dropped on mismatch), the target agents, and an arbitrary-JSON payload. There is
 /// no per-emission id and no sequence number: the stream is ordered.
@@ -87,7 +87,7 @@ pub struct ToAgentParams {
     /// checkably without becoming the authority.
     #[serde(rename = "type")]
     pub signal_type: SignalType,
-    /// Explicit **target agents** by immutable **id** (reference/protocol.md
+    /// Explicit **target agents** by immutable **id** (docs/protocol.md
     /// § Signals; the display name is never a wire key). Empty = the default
     /// fan-out to every bound agent. Non-empty = deliver only to these, still
     /// intersected with the cut matrix (an app can only reach an agent that
@@ -110,7 +110,7 @@ pub struct NotifyParams {
 
 /// `app.agents` params (clatch -> app): the app's connected agents, a full snapshot
 /// each time (the app replaces its view). No seq: the ordered stream already
-/// delivers snapshots in order (reference/protocol.md § Connected agents).
+/// delivers snapshots in order (docs/protocol.md § Connected agents).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentsParams {
     pub agents: Vec<crate::vocab::ConnectedAgent>,
@@ -118,7 +118,7 @@ pub struct AgentsParams {
 
 /// `app.toAgentRefused` params (clatch -> app): an all-or-nothing `run`/`context`
 /// fan-out was refused whole because a receiver could not accept it, so nothing was
-/// delivered (reference/protocol.md § Signals). `id` is the refused signal's
+/// delivered (docs/protocol.md § Signals). `id` is the refused signal's
 /// declared id; `agent` is the first receiver (name order) that could not accept;
 /// `reason` is `inbox_full` (a `run` target) or `queue_full` (a `context` target).
 #[derive(Debug, Clone, Serialize, Deserialize)]

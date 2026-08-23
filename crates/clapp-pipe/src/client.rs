@@ -1,4 +1,4 @@
-//! The app side of the pipe: the reference binding (reference/protocol.md
+//! The app side of the pipe: the reference binding (docs/protocol.md
 //! § Handshake). An app the launcher spawned reads its [`Identity`] from the env,
 //! connects back, sends `register` (just the token), then serves Clatch's callbacks
 //! (answer `ping`, exit on `shutdown`) while it may fire signals. This is the seed of
@@ -22,23 +22,23 @@ pub struct Client {
     identity: Identity,
     /// The app's own declared signals (id -> type). The manifest is the authority
     /// Clatch validates against; this local table is only how the binding stamps the
-    /// declared `type` onto each `app.toAgent` (reference/protocol.md § Signals). It
+    /// declared `type` onto each `app.toAgent` (docs/protocol.md § Signals). It
     /// mirrors the manifest's `connector.signals`, exactly as a native app's constants
     /// mirror its `clatch.json`.
     declared: Vec<SignalDecl>,
     /// The app's connected agents, kept fresh from `app.agents` pushes while
-    /// [`serve`](Self::serve) runs (reference/protocol.md § Connected agents). An
+    /// [`serve`](Self::serve) runs (docs/protocol.md § Connected agents). An
     /// `Arc` so a real app can hold a read handle while it serves.
     agents: Arc<Mutex<Vec<ConnectedAgent>>>,
     /// Refusals received from `app.toAgentRefused` while [`serve`](Self::serve) runs
-    /// (reference/protocol.md § Signals): each is a fan-out that was refused whole. A
+    /// (docs/protocol.md § Signals): each is a fan-out that was refused whole. A
     /// faithful app surfaces these to the user; the reference client just records them.
     refusals: Arc<Mutex<Vec<ToAgentRefusedParams>>>,
 }
 
 impl Client {
     /// Connect using the identity Clatch injected into this process. `None` if the
-    /// process was not launched by Clatch (reference/protocol.md § Launch). `declared`
+    /// process was not launched by Clatch (docs/protocol.md § Launch). `declared`
     /// is the app's own `connector.signals` (id + type), used to stamp the type on
     /// each emission.
     pub async fn from_env(declared: &[SignalDecl]) -> Result<Self> {
@@ -48,7 +48,7 @@ impl Client {
     }
 
     /// Connect to `identity.addr` and complete the `register` handshake. Register
-    /// carries only the token (reference/protocol.md § Handshake); `declared` stays
+    /// carries only the token (docs/protocol.md § Handshake); `declared` stays
     /// app-side, to stamp the type on each `app.toAgent`.
     pub async fn connect(identity: Identity, declared: &[SignalDecl]) -> Result<Self> {
         let addr = identity.addr.clone();
@@ -113,7 +113,7 @@ impl Client {
         Arc::clone(&self.agents)
     }
 
-    /// The refusals this app has received (reference/protocol.md § Signals): each is
+    /// The refusals this app has received (docs/protocol.md § Signals): each is
     /// an all-or-nothing fan-out that was refused whole, so nothing was delivered. A
     /// faithful app surfaces them to the user (e.g. via [`notify`](Self::notify)).
     pub fn refusals(&self) -> Vec<ToAgentRefusedParams> {
@@ -128,7 +128,7 @@ impl Client {
 
     /// Fire a declared signal at the agent (fire-and-forget). The type is looked up
     /// from the app's declared table and stamped on the wire; Clatch re-validates it
-    /// against the manifest (reference/protocol.md § Signals). Fails if `id` was not
+    /// against the manifest (docs/protocol.md § Signals). Fails if `id` was not
     /// declared, since the binding cannot know its type.
     pub async fn signal(&self, id: &str, payload: Value) -> Result<()> {
         self.signal_to(id, payload, Vec::new()).await
@@ -137,7 +137,7 @@ impl Client {
     /// Fire a declared signal at **specific target agents** by immutable **id**.
     /// Same as [`signal`](Self::signal) but delivery is restricted to `target`,
     /// still intersected with the cut matrix (the app can only reach an agent
-    /// that granted it, reference/protocol.md § Signals). Empty `target` is the
+    /// that granted it, docs/protocol.md § Signals). Empty `target` is the
     /// broadcast fan-out. The app chooses the targets; Clatch adds no bias (it
     /// injects `CLATCH_AGENT_ID` so an app can target the caller, a roster id
     /// for a named other, or everyone, all through this one call).

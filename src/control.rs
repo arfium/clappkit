@@ -191,7 +191,11 @@ impl Control {
         let e = Emit { id: id.to_string(), target, payload };
         if self.emit_tx.try_send(e).is_err() {
             let n = self.dropped.fetch_add(1, Ordering::Relaxed) + 1;
-            if n == 1 || n % 100 == 0 {
+            // `is_multiple_of` landed in Rust 1.87. Taking clippy's suggestion
+            // would raise the compiler every clapp needs, to say the same thing.
+            #[allow(clippy::manual_is_multiple_of)]
+            let noisy = n == 1 || n % 100 == 0;
+            if noisy {
                 eprintln!("clappkit: dropped signal '{id}' (emit queue full; {n} dropped)");
             }
         }

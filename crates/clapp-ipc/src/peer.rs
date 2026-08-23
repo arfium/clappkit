@@ -48,9 +48,9 @@ pub struct Inbox {
 }
 
 impl Peer {
-    /// Start the pump over a connected stream, reading under `limits` (the control
-    /// pipe is fail-fast, the admin channel is robust; reference/protocol.md
-    /// § Framing). Returns the handle and the inbound channels.
+    /// Start the pump over a connected stream, reading under `limits` — the control pipe
+    /// is fail-fast, a channel of your own can clear that (docs/protocol.md § Framing).
+    /// Returns the handle and the inbound channels.
     pub fn start<S>(stream: S, addr: String, limits: FrameLimits) -> (Peer, Inbox)
     where
         S: AsyncRead + AsyncWrite + Send + 'static,
@@ -129,7 +129,7 @@ impl Peer {
     /// For pushes the caller must never park on (R1, 2026-07-23): the
     /// connected-agents roster (full-snapshot-on-change) and refusal notices
     /// (advisory) are safe to drop under backpressure, and a supervisor that
-    /// awaited them here could wedge the whole daemon.
+    /// awaited them here could wedge the whole process.
     pub fn notify_lossy(&self, method: &str, params: Value) {
         let _ = self
             .cmd
@@ -174,7 +174,7 @@ impl Peer {
 /// reader then killed a healthy connection - rarely on unix (a small frame is
 /// usually buffered whole, so the read never parks mid-frame), routinely on
 /// Windows named pipes (the first observed casualty: an app's signal burst
-/// racing the daemon's connected-agents push, reference/cross-platform.md B6).
+/// racing the launcher's connected-agents push).
 /// A channel `recv` is cancellation-safe; a multi-await read is not.
 async fn pump<S>(
     stream: S,
@@ -268,7 +268,7 @@ mod tests {
     use serde_json::json;
 
     /// Inbound frames survive concurrent outbound traffic. The regression this
-    /// pins (Windows B6, reference/cross-platform.md): when the read was a
+    /// pins, first seen on a Windows named pipe: when the read was a
     /// `select!` arm, an outbound command landing mid-frame cancelled it, the
     /// consumed bytes vanished, and the desynced stream died silently. The tiny
     /// duplex buffer forces every read to park partway through a frame while
