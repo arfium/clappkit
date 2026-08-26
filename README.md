@@ -66,7 +66,7 @@ answers what. One copy, carried by every clapp.
 | [`protocol.md`](docs/protocol.md) | **The control pipe** — how a running app and the launcher talk |
 | [`architecture.md`](docs/architecture.md) | The model: two channels, one state, two surfaces |
 | [`template.md`](docs/template.md) | Forking the template into a new element |
-| [`icons.md`](docs/icons.md) | The mark, and why the Dock needs its own inset |
+| [`icons.md`](docs/icons.md) | The marks — the icon, the Dock's inset, and the banner |
 | [`playbook.md`](docs/playbook.md) | Rules learned by getting them wrong |
 
 The three contract documents are the **source of truth** for the element formats. The

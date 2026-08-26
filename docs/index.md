@@ -21,7 +21,7 @@ implementation disagrees, the implementation is the bug. Changes land here first
 |---|---|
 | [`architecture.md`](architecture.md) | The model a clapp is built on — two channels, one state, two surfaces. |
 | [`template.md`](template.md) | Forking the template into a new element. |
-| [`icons.md`](icons.md) | The mark: the library standard, and why the Dock needs its own inset. |
+| [`icons.md`](icons.md) | The marks: the icon standard, the Dock's own inset, and what belongs in a banner. |
 | [`playbook.md`](playbook.md) | Rules learned by getting them wrong. Read before shipping. |
 
 ## Where to start
