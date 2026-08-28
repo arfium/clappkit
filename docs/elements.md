@@ -109,13 +109,16 @@ metadata. No `clatch.json`, no folder, no package — a document needs no envelo
 ---
 name: writing-style        # required, and the identity on this machine
 description: How we write. # required, the line an agent reads to decide fit
-publisher: arfium          # optional
+publisher: arfium          # optional locally; always present on a marketplace copy
 tags: [writing, docs]      # optional
 ---
 ```
 
 - **The name is the identity.** A document is named, not versioned into a package, so
   installing over a name that is taken replaces it.
+- **`publisher` is yours to omit and not yours to claim.** A hand-written local skill may
+  leave it out. A copy from the marketplace always carries it: the realm seals the
+  uploader's handle in at publish, and refuses a document that names somebody else.
 - **No front matter is a refusal.** A description the launcher invented would be a skill
   nobody wrote.
 - **A manifest may never say `skill`.** One that claims the type is rejected, and told

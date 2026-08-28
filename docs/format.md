@@ -26,6 +26,12 @@ com.example.clapp-macos-arm64.clapp
   assets/icon.png          icon, banner, up to 4 photos
 ```
 
+**Entries are stored or deflated, and nothing else.** The reader is deflate-only by
+decision: bzip2, lzma and zstd were three C libraries carried for a method nobody
+compressed with. An entry in another method is refused at install, loudly and by name —
+never skipped, because a depot missing a file it promised is worse than one that will not
+open.
+
 **One platform per depot.** Which depot the host gets, and how a release must be laid out
 for it to be found, is [Distribution](#distribution) below. Only the host's launch command
 is validated — the other OS keys are claims about depots that live elsewhere.
@@ -97,15 +103,19 @@ Required on a **clapp:app**, forbidden on a **clapp:cli**. At least one OS key.
 
 | key | required | rule | example |
 |---|---|---|---|
-| `macos` · `windows` · `linux` | at least one | the command, relative to the content root. **Each key present is the claim "runs on that OS"** | `"bin/notes"` |
+| `macos` · `windows` · `linux` | at least one | the command, relative to the content root — **enforced at validation**, not merely expected: an absolute path, any `..`, and an empty segment (`bin//a`) are all refused. Spaces and ordinary characters are fine (`"My App.app/Contents/MacOS/app"` passes). **Each key present is the claim "runs on that OS"** | `"bin/notes"` |
 | `args` | no | arguments appended to whichever command was chosen | `["app"]` |
+
+The command must stay inside the depot because **`args` are appended verbatim**. An
+absolute one is not a package pointing somewhere unusual; it is `/bin/sh` plus
+`["-c", "…"]` from a package that ships no binary at all.
 
 ### `connector`
 
 | field | required | rule | example |
 |---|---|---|---|
 | `cli` | **yes** | the shorthand an agent types. A NAME, not a filename | `"notes"` |
-| `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>` | `"bin/notes"` |
+| `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>`. Every component must be a **safe segment** — `[A-Za-z0-9._-]`, no `..`, no `*`, no whitespace — the same rule the id rides, because the value is interpolated into an exec shim where `$( )` would otherwise expand | `"bin/notes"` |
 | `commands` | no | the verbs an agent may be granted | see below |
 | `signals` | no | the notices the element may send its agent. **Forbidden on a clapp:cli** | see below |
 | `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **clapp:cli only** | `"auth login"` |
