@@ -187,6 +187,37 @@ the `.app` bundle. The depot's manifest already carries the answer — `install_
 wrote it there — so read `connector.cliBin` out of `pkg/clatch.json` and use that. Any
 script that hardcodes a layout will be wrong on one of the three platforms.
 
+## 12b. A display name is not a path component
+
+`scripts/lib.sh` built the macOS `.app` bundle directory out of the manifest's **display
+name**, and rewrote the depot's `connector.cliBin` and `launch.macos` to point inside it.
+Every clapp in the family had a one-word name, so for years that produced `bin/Chess.app/…`
+and nobody noticed the assumption. Then one had a space in it:
+
+```
+connector.cliBin "Clatch Server.app" is not allowed
+```
+
+[`format.md`](format.md) § `connector` limits every component of `cliBin` to
+`[A-Za-z0-9._-]` — no whitespace — because the value is interpolated into an exec shim. So
+the depot built, the self-check passed, `clatch pack` produced a `.clapp`, and the refusal
+arrived at **`clatch install`, in front of a user.**
+
+Two lessons, and the second is the one worth carrying:
+
+- **Free text never becomes a path.** The bundle directory takes a sanitised form of the
+  name and falls back to `connector.cli`, which the manifest already guarantees is one
+  lowercase word. What a person actually reads is `CFBundleName` / `CFBundleDisplayName` in
+  the `Info.plist`, and those still carry the name in full — the directory is a path
+  component inside a depot nobody browses.
+- **"The files are present" is not "the depot is installable."** The self-check proved the
+  manifest and the files agreed, and they did. It now also asserts that every component of
+  `cliBin` and `launch` is a safe segment (`assert_safe_path` in `lib.sh`), because a check
+  that only a launcher performs is a check that runs after shipping.
+
+Anything the depot's manifest points at is worth the same suspicion: it is built from
+values a fork chooses, and the launcher enforces rules the packaging script does not.
+
 ## 13. Credentials live in the app's data dir, and nowhere else
 
 A clapp that needs an API key takes it in **the window**, from the human. Never ask for it
