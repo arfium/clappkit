@@ -102,7 +102,15 @@ fn installed() -> bool {
 fn has_version(key: &str) -> bool {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let out = std::process::Command::new("reg")
+    // Absolute path, never bare "reg": CreateProcess searches the application directory (and
+    // the current directory) before most of PATH, so a `reg.exe` planted beside the app
+    // would run in place of Windows' own. SystemRoot is the OS's own, `C:\Windows` if unset.
+    let reg = std::path::Path::new(
+        &std::env::var_os("SystemRoot").unwrap_or_else(|| r"C:\Windows".into()),
+    )
+    .join("System32")
+    .join("reg.exe");
+    let out = std::process::Command::new(&reg)
         .args(["query", key, "/v", "pv"])
         .creation_flags(CREATE_NO_WINDOW)
         .output();

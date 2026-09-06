@@ -12,8 +12,9 @@ use std::process::Command;
 /// returns `false` so the app keeps running without a launcher.
 pub const ENV_STANDALONE: &str = "CLATCH_STANDALONE";
 /// `CLATCH_BIN` overrides the `clatch` binary used for the relaunch (tests, custom
-/// installs); otherwise `clatch` is resolved on `PATH`. The name itself is the
-/// shared [`crate::vocab::ENV_BIN`]; this re-export keeps the pipe crate's API.
+/// installs), honored only as an absolute path to an existing file (see [`clatch_bin`]);
+/// otherwise `clatch` is resolved on `PATH`. The name itself is the shared
+/// [`crate::vocab::ENV_BIN`]; this re-export keeps the pipe crate's API.
 pub const ENV_BIN: &str = crate::vocab::ENV_BIN;
 
 /// Ensure this process runs under Clatch (docs/format.md), returning whether it
@@ -43,16 +44,50 @@ pub fn clatch_init(app_id: &str) -> Result<bool> {
         return Ok(false);
     }
     if std::env::var_os(ENV_STANDALONE).is_some() {
-        return Ok(false);
+        if standalone_allowed() {
+            return Ok(false);
+        }
+        // A build compiled without the `standalone` feature refuses the hatch: otherwise
+        // CLATCH_STANDALONE=1 silently turns off the "only under Clatch" guarantee on
+        // shipped bytes. Fall through to the relaunch (fail-closed) rather than run bare.
+        eprintln!("clappkit: {ENV_STANDALONE} is ignored in this build; handing off to Clatch");
     }
     relaunch(app_id).map(|()| true)
+}
+
+/// Whether the standalone dev hatch is compiled in. The `standalone` feature is ON by
+/// default, so `cargo run`, the tests and the packaged round-trip keep the hatch. A release
+/// depot that must refuse bare execution builds with the feature disabled: then
+/// CLATCH_STANDALONE cannot make it run without a launcher.
+fn standalone_allowed() -> bool {
+    cfg!(feature = "standalone")
+}
+
+/// The launcher binary for the relaunch. `CLATCH_BIN` may override it for tests and custom
+/// installs, but ONLY as an absolute path to an existing file: a relative name is resolved
+/// against `PATH` and, on Windows, against the app's own directory first, and this exec is
+/// the very first thing a bare-launched clapp does, so a planted `clatch` there would run.
+/// An override that is not an absolute existing file is ignored (with a warning) in favour
+/// of `clatch` on `PATH`.
+fn clatch_bin() -> std::ffi::OsString {
+    if let Some(v) = std::env::var_os(ENV_BIN) {
+        let p = std::path::Path::new(&v);
+        if p.is_absolute() && p.is_file() {
+            return v;
+        }
+        eprintln!(
+            "clappkit: ignoring {ENV_BIN}={:?} (not an absolute path to an existing file)",
+            v.to_string_lossy()
+        );
+    }
+    "clatch".into()
 }
 
 /// Hand off to the launcher: `clatch run <app_id>` (the `clatch://run/<app_id>`
 /// path) starts the daemon if needed and launches the installed copy. We wait for
 /// the launch to be acknowledged, so a failure surfaces to the caller.
 fn relaunch(app_id: &str) -> Result<()> {
-    let bin = std::env::var_os(ENV_BIN).unwrap_or_else(|| "clatch".into());
+    let bin = clatch_bin();
     let mut cmd = Command::new(&bin);
     cmd.arg("run").arg(app_id);
     // No console flash when an app relaunches itself managed (Windows): the same

@@ -33,12 +33,21 @@ pub struct Identity {
 impl Identity {
     /// Read the injected identity. `None` means this process was not launched by
     /// Clatch, which is what the bootstrap and the dev hatch both branch on.
+    ///
+    /// The one-time token is scrubbed from the environment as it is read: it proves THIS
+    /// process is the one Clatch spawned, so a child the app later starts (a shell, a
+    /// sidecar, node) must not inherit it and be able to register as us. The value lives on
+    /// in the returned [`Identity`] for the handshake; only the env copy is removed. Done
+    /// here, during the single early read before the app has spawned anything, because
+    /// mutating the environment is not safe once other threads run.
     pub fn from_env() -> Option<Self> {
-        Some(Self {
+        let identity = Self {
             app_id: AppId::new(std::env::var(ENV_APP_ID).ok()?),
             instance_id: std::env::var(ENV_INSTANCE_ID).ok()?,
             token: std::env::var(ENV_TOKEN).ok()?,
             addr: std::env::var(ENV_CONTROL_ADDR).ok()?,
-        })
+        };
+        std::env::remove_var(ENV_TOKEN);
+        Some(identity)
     }
 }

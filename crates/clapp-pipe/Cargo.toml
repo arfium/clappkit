@@ -6,6 +6,12 @@ license = "Apache-2.0"
 description = "The Clatch app control pipe: the reference Rust binding (clatch_init, register, signals)"
 repository = "https://github.com/arfium/clappkit"
 
+[features]
+# The standalone dev hatch (CLATCH_STANDALONE) is compiled in ONLY with this feature, so a
+# build without it refuses to run bare however the environment is set. clappkit turns it on
+# by default; a fail-closed release depot builds without it.
+standalone = []
+
 [dependencies]
 clapp-ipc = { path = "../clapp-ipc", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
