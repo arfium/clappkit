@@ -35,6 +35,7 @@ mod unix {
             if let Some(dir) = Path::new(addr).parent() {
                 std::fs::create_dir_all(dir)?;
                 std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+                guard_dir(dir)?; // refuse a symlinked or group/world-writable dir we were pointed at
             }
             let inner = UnixListener::bind(addr)?;
             Ok(Self {
@@ -60,9 +61,38 @@ mod unix {
         }
     }
 
-    /// Connect to a listener at `addr`.
+    /// Connect to a listener at `addr`. The dialer USED to check nothing: in the no-home
+    /// fallback the socket lives under a world-writable `/tmp`, where an attacker could plant
+    /// a directory and a socket at the predictable path and receive the control traffic — the
+    /// instance token included — meant for the real app. So refuse a socket whose directory
+    /// anyone else can write to, or that is reached through a symlink.
     pub async fn connect(addr: &str) -> io::Result<UnixStream> {
+        if let Some(dir) = Path::new(addr).parent() {
+            guard_dir(dir)?;
+        }
         UnixStream::connect(addr).await
+    }
+
+    /// The socket's directory must be one only its owner can write to, reached directly and
+    /// not through a symlink someone else controls. This does NOT prove who owns it — that
+    /// needs a `geteuid` this crate does not link — so an attacker's OWN private directory at
+    /// the predictable path is not caught here; what it removes is the group/world-writable
+    /// plant, the realistic local hijack of a predictable socket path.
+    fn guard_dir(dir: &Path) -> io::Result<()> {
+        let meta = std::fs::symlink_metadata(dir)?;
+        if meta.file_type().is_symlink() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!("{}: control-socket directory is a symlink", dir.display()),
+            ));
+        }
+        if meta.permissions().mode() & 0o022 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!("{}: control-socket directory is group- or world-writable", dir.display()),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -93,12 +123,16 @@ mod windows {
 
     impl Listener {
         pub fn bind(addr: &str) -> io::Result<Self> {
-            // NO first-instance reservation: a pipe NAME lives while any handle
-            // to any of its instances does, including a dead server's still-
-            // connected clients, so a reserved name blocks a legitimate rebind —
-            // a restart under a lingering watcher. Deciding who OWNS a name is a
-            // lock's job, not a transport's; binding here is pure transport.
-            let first = ServerOptions::new().create(addr)?;
+            // Reserve the FIRST instance: `create` fails if the name already exists, so a
+            // process that squatted our pipe name cannot quietly stand up a SECOND instance
+            // and have the OS hand it dials meant for us. The control pipe carries the
+            // instance token, so a shared name is a hijack, not a hiccup. This also matches
+            // the unix bind, which fails when the address is taken and leaves reclaiming a
+            // stale name to the caller (a lock's job, not the transport's). The cost —
+            // weighed and accepted — is that a rebind while a dead server's clients still
+            // hold instances fails until they drop; the caller retries, and failing toward
+            // "not shared with a stranger" is the safe direction.
+            let first = ServerOptions::new().first_pipe_instance(true).create(addr)?;
             Ok(Self {
                 addr: addr.into(),
                 first: Mutex::new(Some(first)),

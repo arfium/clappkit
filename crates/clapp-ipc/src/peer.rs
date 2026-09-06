@@ -234,12 +234,12 @@ async fn pump<S>(
                 let written = match outbound {
                     Some(Cmd::Request { msg, reply }) => {
                         pending.insert(msg.id, reply);
-                        frame::write(&mut wr, &msg, limits.max_frame).await
+                        frame::write(&mut wr, &msg, limits).await
                     }
-                    Some(Cmd::Notify(msg)) => frame::write(&mut wr, &msg, limits.max_frame).await,
-                    Some(Cmd::Respond(msg)) => frame::write(&mut wr, &msg, limits.max_frame).await,
+                    Some(Cmd::Notify(msg)) => frame::write(&mut wr, &msg, limits).await,
+                    Some(Cmd::Respond(msg)) => frame::write(&mut wr, &msg, limits).await,
                     Some(Cmd::RespondFlushed(msg, ack)) => {
-                        let written = frame::write(&mut wr, &msg, limits.max_frame).await;
+                        let written = frame::write(&mut wr, &msg, limits).await;
                         if written.is_ok() {
                             let _ = ack.send(());
                         }
@@ -287,7 +287,7 @@ mod tests {
                 frame::write(
                     &mut r_wr,
                     &Notification::new("sig", json!({ "i": i })),
-                    FrameLimits::control().max_frame,
+                    FrameLimits::control(),
                 )
                 .await
                 .unwrap();

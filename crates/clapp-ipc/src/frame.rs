@@ -45,24 +45,26 @@ impl FrameLimits {
     }
 }
 
-/// Write one length-prefixed JSON frame and flush it. `max_frame` is the SAME
-/// bound the receiving reader enforces (its channel's [`FrameLimits::max_frame`]).
+/// Write one length-prefixed JSON frame and flush it. Takes the SAME [`FrameLimits`] the
+/// receiving reader enforces, so the write bound and the read bound cannot drift apart:
+/// the type carries the promise the old bare `usize` only made in prose.
 /// Symmetric on purpose (R2, 2026-07-23): a fail-fast reader (the control pipe)
 /// closes on an over-size frame, so an over-size frame must be rejected LOUDLY at
 /// the source rather than written fine here and then silently killing the peer. The
 /// caller learns its payload was too large instead of the peer just vanishing.
-pub async fn write<W, T>(w: &mut W, msg: &T, max_frame: usize) -> io::Result<()>
+pub async fn write<W, T>(w: &mut W, msg: &T, limits: FrameLimits) -> io::Result<()>
 where
     W: AsyncWrite + Unpin,
     T: Serialize + ?Sized,
 {
     let body = serde_json::to_vec(msg).map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
-    if body.len() > max_frame {
+    if body.len() > limits.max_frame {
         return Err(io::Error::new(
             ErrorKind::InvalidData,
             format!(
-                "frame {} bytes exceeds the channel limit {max_frame}",
-                body.len()
+                "frame {} bytes exceeds the channel limit {}",
+                body.len(),
+                limits.max_frame
             ),
         ));
     }
@@ -107,8 +109,7 @@ where
                     format!("control-pipe frame length {len} not credible: desync, closing"),
                 ));
             }
-            let mut body = vec![0u8; len];
-            r.read_exact(&mut body).await?;
+            let body = read_body(r, len).await?;
             return serde_json::from_slice(&body).map(Some).map_err(|e| {
                 io::Error::new(ErrorKind::InvalidData, format!("control-pipe frame: {e}"))
             });
@@ -125,8 +126,7 @@ where
             eprintln!("clapp-ipc: skipped an oversized frame ({len} bytes > max)");
             continue;
         }
-        let mut body = vec![0u8; len];
-        r.read_exact(&mut body).await?;
+        let body = read_body(r, len).await?;
         match serde_json::from_slice(&body) {
             Ok(msg) => return Ok(Some(msg)),
             Err(e) => {
@@ -137,6 +137,24 @@ where
             }
         }
     }
+}
+
+/// Read exactly `len` bytes into a fresh buffer that GROWS with the bytes actually
+/// received, not the length the peer claimed. A `vec![0u8; len]` up front lets a peer spend
+/// a 4-byte prefix to make us reserve up to `max_frame` (tens of MiB) before a single body
+/// byte lands, and stall — a cheap amplification against memory. Capping the initial
+/// reservation and reading in bounded chunks makes what we hold proportional to what the
+/// peer has actually sent. The `max_frame` ceiling still bounds the honest total.
+async fn read_body<R: AsyncRead + Unpin>(r: &mut R, len: usize) -> io::Result<Vec<u8>> {
+    const CHUNK: usize = 64 * 1024;
+    let mut body = Vec::with_capacity(len.min(CHUNK));
+    let mut buf = [0u8; CHUNK];
+    while body.len() < len {
+        let want = (len - body.len()).min(CHUNK);
+        r.read_exact(&mut buf[..want]).await?;
+        body.extend_from_slice(&buf[..want]);
+    }
+    Ok(body)
 }
 
 /// Consume and discard exactly `len` bytes (an oversized frame's body), in
@@ -167,7 +185,7 @@ mod tests {
     #[tokio::test]
     async fn round_trip_and_clean_eof() {
         let (mut a, mut b) = tokio::io::duplex(256);
-        write(&mut a, &json!({"hello": 1}), MAX_FRAME)
+        write(&mut a, &json!({"hello": 1}), LENIENT)
             .await
             .unwrap();
         drop(a); // clean close after one frame
@@ -184,7 +202,7 @@ mod tests {
         let (mut a, mut b) = tokio::io::duplex(64 * 1024);
         let msg = json!({ "text": "x".repeat(3 << 20) });
         let expected = msg.clone();
-        let writer = tokio::spawn(async move { write(&mut a, &msg, MAX_FRAME).await });
+        let writer = tokio::spawn(async move { write(&mut a, &msg, LENIENT).await });
         let got: Option<serde_json::Value> = read(&mut b, LENIENT).await.unwrap();
         writer.await.unwrap().unwrap();
         assert_eq!(got, Some(expected));
@@ -212,7 +230,7 @@ mod tests {
                 .unwrap();
             a.write_all(garbage).await.unwrap();
             // 3) The frame that must still arrive.
-            write(&mut a, &json!({"alive": true}), MAX_FRAME)
+            write(&mut a, &json!({"alive": true}), LENIENT)
                 .await
                 .unwrap();
         });

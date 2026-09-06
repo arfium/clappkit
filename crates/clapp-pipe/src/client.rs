@@ -60,7 +60,7 @@ impl Client {
             instance_token: identity.token.clone(),
         };
         let req = Request::new(1, method::REGISTER, to_value(params));
-        frame::write(&mut stream, &req, FrameLimits::control().max_frame)
+        frame::write(&mut stream, &req, FrameLimits::control())
             .await
             .map_err(|e| Error::io(&addr, e))?;
 
