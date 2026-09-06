@@ -13,13 +13,18 @@ license = "Apache-2.0"
 # tool that links clappkit only for `ipc::request` — never compiles a PNG codec, AppKit
 # or a webview.
 [features]
-default = ["icon"]
+default = ["icon", "standalone"]
 # The Dock/taskbar icon for a bare-executable clapp (icon.rs): a PNG codec + AppKit.
 icon = ["dep:image", "dep:cocoa", "dep:objc"]
 # The Tauri GUI half every clapp was copy-pasting (app.rs): apply_icon, window_cmd,
 # asset, spawn_ipc. OFF by default so the core stays tauri-free; a GUI clapp opts in
 # with `clappkit = { path = "…", features = ["tauri"] }`.
 tauri = ["dep:tauri", "icon"]
+# The CLATCH_STANDALONE dev hatch (clatch_init running bare, no launcher). ON by default so
+# `cargo run`, tests and the packaged round-trip keep it; a fail-closed release depot depends
+# on clappkit with `default-features = false` and omits it, and then CLATCH_STANDALONE=1
+# cannot make the shipped binary run without Clatch.
+standalone = ["clapp-pipe/standalone"]
 
 # Depended on by every clapp so the plumbing lives in ONE place (DRY).
 [dependencies]

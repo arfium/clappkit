@@ -132,7 +132,7 @@ where
             let read = tokio::time::timeout(REQUEST_TIMEOUT, frame::read::<_, Value>(&mut stream, LIMITS));
             if let Ok(Ok(Some(req))) = read.await {
                 let resp = handler(req).await;
-                let _ = frame::write(&mut stream, &resp, LIMITS.max_frame).await;
+                let _ = frame::write(&mut stream, &resp, LIMITS).await;
             }
         });
     }
@@ -207,7 +207,7 @@ pub async fn request(cli: &str, req: &Value) -> Result<Value> {
         Ok(s) => s,
         Err(e) => return Err(sandbox_aware(cli, &e)),
     };
-    frame::write(&mut stream, req, LIMITS.max_frame).await?;
+    frame::write(&mut stream, req, LIMITS).await?;
     frame::read::<_, Value>(&mut stream, LIMITS)
         .await?
         .ok_or_else(|| anyhow::anyhow!("{cli}: the app closed the connection"))
@@ -318,7 +318,7 @@ mod tests {
         drop(connect(&addr).await.expect("connect"));
 
         let mut s = connect(&addr).await.expect("connect");
-        frame::write(&mut s, &serde_json::json!({ "cmd": "ping" }), LIMITS.max_frame)
+        frame::write(&mut s, &serde_json::json!({ "cmd": "ping" }), LIMITS)
             .await
             .unwrap();
         let resp = frame::read::<_, Value>(&mut s, LIMITS).await.unwrap().unwrap();
