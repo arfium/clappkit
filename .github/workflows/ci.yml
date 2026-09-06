@@ -2,25 +2,25 @@
 # nothing else runs these tests — each app's CI compiles clappkit but exercises its own
 # code, not this one's.
 #
-# macOS and Windows, one job each: the same two platforms the family ships, and the two
-# where this crate's `cfg` branches actually differ (unix `0700` vs a Windows ACL, a unix
-# socket vs a named pipe, AppKit vs nothing).
+# clappkit depends on the clatch pipe crates as LOCAL path crates in this workspace
+# (crates/clapp-ipc, crates/clapp-pipe): no ssh://, no key, no vendored copy — a fresh
+# clone builds. So CI tests the whole workspace, adversarial framing tests included.
 #
-# clappkit is public and depends on the clatch crates over ssh://, which a runner has no
-# key for — so it builds here with the same vendored copy the apps use. There is no
-# vendor/ in this repo, which is why the build below is the app-side patch's problem and
-# this workflow tests what it can without one: the library's own logic.
-# NOT RUN AUTOMATICALLY. GitHub Actions minutes are the constraint here, and this family
-# is fifteen repositories: on a private repo a macOS runner bills at 10x, so a push-and-PR
-# gate across all of them burns the allowance faster than it earns anything. The local
-# gate is the real one — `npm run verify` opens a window and proves the two surfaces talk,
-# which no headless runner can do anyway.
-#
-# So this is manual: `gh workflow run CI -R <owner>/<repo>`. Put `push`/`pull_request`
-# back when there is budget for it; nothing else here needs to change.
+# Two gates, split by cost:
+#   * quick (ubuntu, 1x): runs on every push and PR. `cargo test --workspace` is the hard
+#     gate; clippy and audit report but do not fail the build (the crate is not lint-clean
+#     today, and a red nobody can fix is how people learn to ignore CI — tighten to
+#     `-D warnings` and a gating audit once clean).
+#   * platforms (macOS + Windows, 10x on a private repo): MANUAL — `gh workflow run CI`.
+#     These are where the cfg branches differ (unix 0700 vs a Windows ACL, a unix socket
+#     vs a named pipe), but a push-and-PR gate on 10x runners across fifteen repos burns
+#     the allowance faster than it earns. The real local gate is still `npm run verify`,
+#     which opens a window and proves the two surfaces talk — no headless runner can.
 name: CI
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +31,44 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  # Cheap and automatic: the library's own logic on the platform that bills at 1x.
+  quick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      # The whole workspace, --all-features: without --workspace the clapp-ipc framing
+      # tests (the adversarial-input ones) and clapp-pipe never run at all. Several tests
+      # touch the process-global CLATCH_DATA_DIR, so ENV_LOCK serialises them; run in
+      # parallel deliberately, which is what caught that ordering bug in the first place.
+      - name: Test (workspace)
+        run: cargo test --workspace --all-features
+
+      # Report-only for now (see the header): surfaces lints and advisories without a
+      # red-on-arrival gate. Promote to hard gates once the crate is clean.
+      - name: Clippy
+        continue-on-error: true
+        run: cargo clippy --workspace --all-features --all-targets
+
+      - name: Audit
+        continue-on-error: true
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Run audit
+        continue-on-error: true
+        run: cargo audit
+
+  # The two platforms the family ships, where the cfg branches actually differ. MANUAL
+  # (workflow_dispatch): 10x runners across fifteen repos are not a push-and-PR budget.
+  platforms:
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -54,12 +91,7 @@ jobs:
           Add-MpPreference -ExclusionPath "${{ github.workspace }}","$env:USERPROFILE\.cargo","$env:USERPROFILE\.rustup" -ErrorAction SilentlyContinue
           Write-Host "excluded: workspace, ~/.cargo, ~/.rustup"
 
-      # The tests are the point. They are also order-dependent in one place — several
-      # touch the process-global CLATCH_DATA_DIR — so ENV_LOCK exists and this runs them
-      # in parallel deliberately, which is what caught that in the first place.
-      #
       # No `cargo fmt --check` here on purpose: the crate is not fmt-clean today (41
-      # blocks), so the gate would be red on arrival, and a red nobody can fix is how
-      # people learn to ignore CI. Reformat first, then add it.
-      - name: Test
-        run: cargo test --all-features
+      # blocks), so the gate would be red on arrival. Reformat first, then add it.
+      - name: Test (workspace)
+        run: cargo test --workspace --all-features

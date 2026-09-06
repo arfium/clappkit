@@ -28,12 +28,13 @@ standalone = ["clapp-pipe/standalone"]
 
 # Depended on by every clapp so the plumbing lives in ONE place (DRY).
 [dependencies]
-# The wire, ours. These were four crates pulled from the launcher's own private
-# repository over ssh://, which meant no CI runner and no fresh clone could build a clapp
-# without a key — so every clapp carried a copy of the launcher's source in vendor/ to get
-# around it. A platform ships an SDK; it does not ship its client's source inside every
-# app. docs/protocol.md is the contract and it lives here, so the binding that speaks it
-# lives here too.
+# The wire, ours - the two LOCAL path crates below (crates/clapp-ipc, crates/clapp-pipe):
+# no ssh://, no key, no vendored copy, so a fresh clone or a CI runner just builds.
+# (History: these were once pulled from the launcher's private repo over ssh://, which meant
+# nothing without a key could build a clapp, so every clapp carried a copy of the launcher's
+# source in vendor/ to cope. A platform ships an SDK, not its client's source inside every
+# app; docs/protocol.md is the contract and lives here, so the binding that speaks it lives
+# here too - now as these path crates.)
 clapp-ipc = { path = "crates/clapp-ipc", version = "0.1.0" }
 clapp-pipe = { path = "crates/clapp-pipe", version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time"] }

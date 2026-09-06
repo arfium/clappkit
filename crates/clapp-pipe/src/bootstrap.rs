@@ -101,3 +101,65 @@ fn relaunch(app_id: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    // clatch_init itself is not unit-tested: its no-token path EXECs `clatch`. These cover
+    // the pure decisions around it. They mutate the process-global environment, so they
+    // hold this lock to take turns.
+    static ENV: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn clatch_bin_ignores_an_unsafe_override_and_honours_an_absolute_file() {
+        let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let clatch = std::ffi::OsString::from("clatch");
+
+        std::env::remove_var(ENV_BIN);
+        assert_eq!(clatch_bin(), clatch, "no override falls back to PATH `clatch`");
+
+        // A relative name would resolve against PATH and the app's own dir: ignored.
+        std::env::set_var(ENV_BIN, "clatch");
+        assert_eq!(clatch_bin(), clatch, "a relative override is not honoured");
+
+        // An absolute path that does not exist: ignored.
+        std::env::set_var(ENV_BIN, "/nonexistent/clatch-xyz-000");
+        assert_eq!(clatch_bin(), clatch, "a missing absolute override is not honoured");
+
+        // An absolute path to a real file (the test binary itself): honoured.
+        let real = std::env::current_exe().unwrap();
+        std::env::set_var(ENV_BIN, &real);
+        assert_eq!(clatch_bin(), real.clone().into_os_string(), "an absolute file wins");
+
+        std::env::remove_var(ENV_BIN);
+    }
+
+    #[test]
+    fn standalone_is_gated_on_the_feature() {
+        assert_eq!(standalone_allowed(), cfg!(feature = "standalone"));
+    }
+
+    #[test]
+    fn from_env_scrubs_only_the_instance_token() {
+        use crate::identity::{Identity, ENV_APP_ID, ENV_CONTROL_ADDR, ENV_INSTANCE_ID, ENV_TOKEN};
+        let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
+
+        std::env::set_var(ENV_APP_ID, "com.x.y");
+        std::env::set_var(ENV_INSTANCE_ID, "run-1");
+        std::env::set_var(ENV_CONTROL_ADDR, "/tmp/x.sock");
+        std::env::set_var(ENV_TOKEN, "s3cret");
+
+        let id = Identity::from_env().expect("all four vars present");
+        assert_eq!(id.token, "s3cret", "the token is kept in the struct for the handshake");
+        assert!(std::env::var_os(ENV_TOKEN).is_none(), "and scrubbed from the environment");
+        // Only the secret is scrubbed; the rest remain for whatever reads them next.
+        assert!(std::env::var_os(ENV_APP_ID).is_some());
+        assert!(std::env::var_os(ENV_CONTROL_ADDR).is_some());
+
+        for v in [ENV_APP_ID, ENV_INSTANCE_ID, ENV_CONTROL_ADDR] {
+            std::env::remove_var(v);
+        }
+    }
+}
