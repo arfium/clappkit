@@ -1,4 +1,4 @@
-# Forking the template
+# FORKING THE TEMPLATE
 
 Rename, replace the app, declare the surface, verify.
 
@@ -64,7 +64,7 @@ clatch install ./<id>-*.clapp && clatch run <id>
 <cli> status
 ```
 
-## Always-on apps
+## 5. Always-on apps
 
 Clatch ships no scheduler and no app autostart — no clapp is started at boot. An app
 that must act between user sessions keeps its own loop while running and emits a `run`
@@ -72,7 +72,7 @@ signal when it fires. Persistence and
 missed-schedule policy are yours; Clatch gives you the wake and nothing more.
 `clock-clapp` is the worked example.
 
-## Gotchas
+## 6. Gotchas
 
 - `connector.cli` is **mandatory**. There is no CLI-less clapp; a manifest without one is
   rejected at validate and install.

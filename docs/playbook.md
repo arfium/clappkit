@@ -1,4 +1,4 @@
-# The clapp playbook
+# THE PLAYBOOK
 
 Rules learned by getting them wrong. Each one costs an afternoon if you rediscover it.
 
@@ -187,7 +187,7 @@ the `.app` bundle. The depot's manifest already carries the answer — `install_
 wrote it there — so read `connector.cliBin` out of `pkg/clatch.json` and use that. Any
 script that hardcodes a layout will be wrong on one of the three platforms.
 
-## 12b. A display name is not a path component
+## 13. A display name is not a path component
 
 `scripts/lib.sh` built the macOS `.app` bundle directory out of the manifest's **display
 name**, and rewrote the depot's `connector.cliBin` and `launch.macos` to point inside it.
@@ -218,7 +218,7 @@ Two lessons, and the second is the one worth carrying:
 Anything the depot's manifest points at is worth the same suspicion: it is built from
 values a fork chooses, and the launcher enforces rules the packaging script does not.
 
-## 13. Credentials live in the app's data dir, and nowhere else
+## 14. Credentials live in the app's data dir, and nowhere else
 
 A clapp that needs an API key takes it in **the window**, from the human. Never ask for it
 in chat, never accept it through a CLI verb, and give the agent no verb that can read it
@@ -227,7 +227,7 @@ line or a CLI answer — snapshots are the one structure that goes everywhere, s
 secret must be absent from them by construction, not by redaction. What both surfaces show
 is whether it is *connected*, which is all either of them needs to know.
 
-## 14. Continuous state reports on a threshold, not a clock
+## 15. Continuous state reports on a threshold, not a clock
 
 A map's camera changes sixty times a second under a dragging hand; an agent wants none of
 those and must still eventually hear the drift. The pattern from `maps-clapp`: the window
@@ -237,7 +237,7 @@ the agent was actually told, so nudges accumulate into one honest report. The sa
 threshold gates any per-move spending (a reverse lookup naming the view). Never a timer:
 polling a continuous value is how you pay for silence.
 
-## 15. Ambiguity is a state, not a guess and not an error
+## 16. Ambiguity is a state, not a guess and not an error
 
 "Route to Taksim" names a square and a metro station. Picking one silently routes with
 total confidence to the wrong place; refusing teaches nothing. `maps-clapp`'s answer:
@@ -248,7 +248,7 @@ open questions at once; there is no second list to drift. Corollary: a clear win
 ambiguity — gate on the *margin* between the top two scores, and let an exact name match
 be decisive.
 
-## 16. The data already on screen answers first
+## 17. The data already on screen answers first
 
 Vector tiles are not pictures: OpenMapTiles carries a classified `poi` layer, decoded and
 in memory for whatever the map is drawing. `maps-clapp` answers a category tap ("fuel")
@@ -258,7 +258,7 @@ agent sees what the human sees. A head start only one surface knows about is dri
 better manners. When the tiles carry nothing, the seed is silently inert: below a minimum
 it does not fire at all.
 
-## Field notes
+## 18. Field notes
 
 - **`npm run build`, never bare `cargo build`.** Without Tauri's `custom-protocol` feature
   the binary loads the dev URL and you get a white window.

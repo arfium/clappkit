@@ -1,18 +1,15 @@
-# The .clapp format
+# THE CLAPP FORMAT
 
 What a package contains and what its manifest may say: the depot layout, every field of
 `clatch.json`, what each element type is allowed to declare, and the bounds a launcher
 enforces before it will open one.
 
-This is the **static** half of the contract, read at **install**. What each type *is* —
+This is the **static** half of the contract, read at **install**. What each kind *is* —
 clapp:app, clapp:cli, skill — is [`elements.md`](elements.md); the runtime half a clapp:app
 speaks is [`protocol.md`](protocol.md).
 
-> **This is the source of truth.** Anything that opens a `.clapp` reads it as defined here
-> — the Clatch launcher first, which validates and installs. Where an implementation
-> disagrees with this document, the implementation is the bug. Changes land here first.
 
-## The package
+## 1. The package
 
 **A `.clapp` packages the two types that have a payload**: a zip rooted at `clatch.json`,
 where the manifest's `type` inside selects the treatment — never the file extension, never
@@ -43,7 +40,21 @@ Authenticity is out of scope, deliberately, and no wording here should suggest o
 **Nothing runs on install.** Opening one is file extraction only; the app executes later
 through `clatch run`. Ceilings: **512 MiB** downloaded, **4 GiB** uncompressed.
 
-## The manifest — `clatch.json`
+## 2. Versioning
+
+The manifest carries two independent majors, and neither is the element's `version`
+([taxonomy.md](taxonomy.md) § 8. Terms that collide):
+
+| major | is | bumps when |
+|---|---|---|
+| `manifestVersion` | the schema of `clatch.json` itself | a field becomes mandatory, or a meaning changes |
+| `protocol` | the control-pipe major a clapp:app speaks ([protocol.md](protocol.md) § 11. Security and versioning) | the pipe's vocabulary breaks |
+
+**Additive-only within a `manifestVersion`** — new optional fields only, never a new
+mandatory one; a launcher ignores fields it does not know. A breaking change bumps the
+major, and the change is written at the point of use, loudly.
+
+## 3. The manifest — `clatch.json`
 
 The app's static declaration, read at **install**. It is the single source for
 everything Clatch knows about the app before it runs: identity, how to launch, and
@@ -68,7 +79,7 @@ the agent-facing surface.
 }
 ```
 
-### Identity
+## 4. Identity
 
 | field | required | rule | example |
 |---|---|---|---|
@@ -81,7 +92,7 @@ the agent-facing surface.
 | `protocol` | clapp:app only | integer; the control-pipe major this element targets. **Forbidden on a clapp:cli**, which speaks no pipe | `2` |
 | `publisher` | no | who published it; a package's id already implies its maker | `"acme"` |
 
-### Presentation
+## 5. Presentation
 
 | field | required | rule | example |
 |---|---|---|---|
@@ -91,9 +102,11 @@ the agent-facing surface.
 | `about` | no | long-form text; `description` stays the one-liner | `"Notes keeps…"` |
 | `tags` | no | library tags | `["productivity"]` |
 
-Sizes and formats are bounded — see [Picture limits](#picture-limits) below.
+Sizes and formats are bounded — see § 9. Pictures below.
 
-### `launch`
+**`description` and `about` are the manifest's own field names.** A store presents them under its own labels — the registry renames them for the card and the detail page — and that mapping is the registry's, in `clatch-server/docs/`; this document names only what the manifest carries.
+
+## 6. `launch`
 
 Required on a **clapp:app**, forbidden on a **clapp:cli**. At least one OS key.
 
@@ -110,7 +123,7 @@ The command must stay inside the depot because **`args` are appended verbatim**.
 absolute one is not a package pointing somewhere unusual; it is `/bin/sh` plus
 `["-c", "…"]` from a package that ships no binary at all.
 
-### `connector`
+## 7. `connector`
 
 | field | required | rule | example |
 |---|---|---|---|
@@ -120,7 +133,7 @@ absolute one is not a package pointing somewhere unusual; it is `/bin/sh` plus
 | `signals` | no | the notices the element may send its agent. **Forbidden on a clapp:cli** | see below |
 | `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **clapp:cli only** | `"auth login"` |
 
-#### `connector.commands[]`
+### `connector.commands[]`
 
 Each entry is separately grantable, so this list is the **permission grain** — not the
 manual. The manual is `<cli> -h`.
@@ -134,7 +147,7 @@ manual. The manual is `<cli> -h`.
 | `name` | **yes** | non-empty and unique within the list; the verb as typed | `"add"` |
 | `about` | **yes** | one line, shown beside the verb when granting | `"add a note"` |
 
-#### `connector.signals[]`
+### `connector.signals[]`
 
 Declared and typed. The declaration is the authority: a signal whose type disagrees with
 it, or whose id was never declared, is dropped rather than honoured.
@@ -152,7 +165,7 @@ it, or whose id was never declared, is dropped rather than honoured.
 is the constant surface an agent drives, so a manifest without one is rejected at
 validate and install.
 
-### What each type may declare
+## 8. What each kind may declare
 
 | | **clapp:app** | **clapp:cli** |
 |---|---|---|
@@ -168,13 +181,10 @@ declared something it never got.
 
 **A manifest may never say `skill`.** A skill has no `clatch.json` at all — it is a plain
 `.md` whose YAML front matter IS its manifest, and its `name` is its identity. One
-claiming the type is refused, with where its metadata belongs instead.
+claiming the kind is refused, with where its metadata belongs instead.
 
-**Additive-only within a `manifestVersion`** — new optional fields only, never a new
-mandatory one; a launcher ignores fields it does not know. A breaking change bumps
-`manifestVersion`.
 
-### Picture limits
+## 9. Pictures
 
 Optional, but when shipped they carry a fixed standard (as the agent avatar does),
 checked at install for format and resolution. Aspect is a design target, not a hard
@@ -206,7 +216,7 @@ So: keep focal imagery **center/right**; match the **6.72:1** ratio (the height 
 fixed — an off-ratio image loses its top/bottom); and expect the sides to crop on a
 narrow window. The `icon` is just the desktop app icon — no separate asset.
 
-## Distribution
+## 10. Distribution
 
 A release is how a depot reaches a machine. `clatch install <owner>/<repo>` reads the
 repository's **latest release**, `…@<tag>` a named one, and picks **one asset** to install.

@@ -1,9 +1,13 @@
-# Elements: clapp:app, clapp:cli, skill
+# ELEMENTS
 
-An **element** is the unit Clatch installs, lists and distributes: one identity, one card
-in the library. There are exactly **three types**, declared and never inferred — the
-manifest says what a package is; nothing sniffs its contents to guess. Two are packages —
-a folder with a `clatch.json`. The third is a document.
+The three element types, and what each may declare. *Element* itself is defined in
+[taxonomy.md](taxonomy.md) § 1. The unit; here it splits into exactly **three kinds**,
+declared and never inferred — the manifest says what a package is, and nothing sniffs its
+contents to guess. Two are packages — a `.clapp`, a zip rooted at `clatch.json` and
+extracted to a **depot** on install ([taxonomy.md](taxonomy.md) § 2. The package). The
+third is a document.
+
+## 1. The three kinds
 
 | | **clapp:app** | **clapp:cli** | **skill** |
 |---|---|---|---|
@@ -17,9 +21,9 @@ a folder with a `clatch.json`. The third is a document.
 | Agent surface | its CLI, granted | its CLI, granted | none — knowledge, not commands |
 | Login verbs | never — its window owns auth | optional | never |
 
-### The name and the field
+## 2. The name and the field
 
-`clapp:app` and `clapp:cli` are the **element names** — what these things are called
+`clapp:app` and `clapp:cli` are the **kind names** — what these things are called
 everywhere they are discussed, listed or compared. `clapp:` is the namespace, and the part
 after the colon is the kind within it.
 
@@ -35,9 +39,9 @@ a type nobody chose.
 `skill` names both the type and nothing in any manifest: a skill has no `clatch.json` at
 all, so the string never appears in one.
 
-### Three rules
+## 3. Three rules
 
-**The type is a contract, not a hint.** Each type has required *and forbidden* surfaces,
+**The kind is a contract, not a hint.** Each kind has required *and forbidden* surfaces,
 and validate/install reject anything that crosses them. There are no hybrids: a clapp:cli
 that grows a window becomes a clapp:app by changing its type, not by drifting into one.
 
@@ -50,11 +54,8 @@ type, not a missing feature.
 The field-by-field rules are in [`format.md`](format.md); the runtime half a clapp speaks
 is [`protocol.md`](protocol.md).
 
-> **This is the source of truth.** Anything that opens a `.clapp` reads it as defined here
-> — the Clatch launcher first, which validates and installs. Where an implementation
-> disagrees with this document, the implementation is the bug. Changes land here first.
 
-## clapp:app
+## 4. clapp:app
 
 A full app: a window for the human, a CLI for the agent, one binary serving both over one
 state. It declares `launch`, registers on the control pipe, and may emit typed signals
@@ -63,7 +64,7 @@ that wake or inform its agent.
 Auth is its own window's business — the login verbs are forbidden here, because an app
 with a screen has somewhere better to ask.
 
-## clapp:cli
+## 5. clapp:cli
 
 One well-formed command-line tool, packaged and formatted for Clatch. Content is
 `clatch.json` + `bin/<cli>` + optional assets, shipped per platform exactly like a
@@ -75,7 +76,7 @@ executable: the declared path, else that path plus the host's executable extensi
 install share the resolver, so they cannot disagree.
 
 There is **no lifecycle**: no instance, no run state, no focus. `clatch run` refuses, and
-says the type is why.
+says the kind is why.
 
 ### Login
 
@@ -92,15 +93,17 @@ shape it must not claim.
 }
 ```
 
-- `login` runs the verb, bounded. A tool that insists on a TTY fails fast, naming the
-  command to run by hand.
-- `loginCheck` is the **only** source of truth: exit 0 means signed in. Without it the
-  state is unknown and never claimed.
-- `logout` matters as much as `login`. A tool that can take a credential must give it
-  back, and purge is a different act: it erases Clatch's copy while the vendor may still
-  hold a live session only its own verb can end. Make it idempotent.
+| verb | is | rule |
+|---|---|---|
+| `login` | the command that signs in | run bounded; a tool that insists on a TTY fails fast, naming the command to run by hand |
+| `loginCheck` | the command that reports standing | the **only** source of truth — exit 0 means signed in; without it the state is unknown and never claimed |
+| `logout` | the command that signs out | matters as much as `login`; make it idempotent |
 
-## skill
+`logout` and purge are different acts: purge erases Clatch's copy of a credential, while
+the vendor may still hold a live session only `logout` can end. A tool that can take a
+credential must be able to give it back.
+
+## 6. skill
 
 Knowledge, not a program: **one Markdown file** whose YAML front matter is its entire
 metadata. No `clatch.json`, no folder, no package — a document needs no envelope.
@@ -121,10 +124,10 @@ tags: [writing, docs]      # optional
   uploader's handle in at publish, and refuses a document that names somebody else.
 - **No front matter is a refusal.** A description the launcher invented would be a skill
   nobody wrote.
-- **A manifest may never say `skill`.** One that claims the type is rejected, and told
+- **A manifest may never say `skill`.** One that claims the kind is rejected, and told
   where its metadata belongs instead — a skill has no `clatch.json` to claim it in.
 
-## Naming
+## 7. Naming
 
 **An element's repository ends in `-clapp` whatever its type** — a clapp:cli lives in
 `acme/parts-clapp`, never `acme/parts-cli`. The suffix names the ecosystem, not the kind,

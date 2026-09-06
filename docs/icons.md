@@ -1,10 +1,10 @@
-# The marks: icon and banner
+# THE MARKS
 
 [`format.md`](format.md#picture-limits) fixes the **format** of `assets/icon.png`: square
 PNG, 512–1024 px, ≤ 1 MiB. This fixes the **design**, because icons sit side by side in
 the library — if one fills its tile and another floats at 70%, the shelf looks broken.
 
-## The rules
+## 1. The rules
 
 1. **Author at 1024×1024 RGBA**, and keep an editable source beside the PNG
    (`assets/icon.svg`, or a render script). The mark is regenerated, never hand-traced.
@@ -38,7 +38,7 @@ im = Image.open('assets/icon.png').convert('RGBA'); W,H = im.size; b = im.getbbo
 print(f'{100*(b[2]-b[0])//W}% x {100*(b[3]-b[1])//H}%')"   # ~100% tile · ~95%+ glyph height
 ```
 
-## The desktop is a second standard
+## 2. The desktop is a second standard
 
 A full-bleed tile is right in the library and **wrong in the Dock**, where every icon is
 inset and yours would tower over its neighbours. `clappkit::icon::dock_icon` insets it to
@@ -53,7 +53,7 @@ That only helps once the OS has an icon to show at all:
 - **Windows** — `src-tauri/icons/icon.ico` is compiled into the executable as a resource.
   Derive it from the same `assets/icon.png` so the two cannot drift.
 
-## The banner is a strip, not a picture
+## 3. The banner is a strip, not a picture
 
 The bounds are in [`format.md`](format.md) § Picture limits — 215:32, at least 3440×512.
 This is what to put inside them.
@@ -80,7 +80,7 @@ the icon sit inches apart, and a second palette makes them look like two product
 a shared grammar, one motif per app. That is deliberate. Sixteen banners drawn separately
 become sixteen unrelated pictures; drawn together they become a shelf.
 
-## `pkg/` is a copy
+## 4. `pkg/` is a copy
 
 `scripts/package.sh` copies `assets/icon.png` and `assets/banner.png` into the depot; it
 does not update them itself.
@@ -88,7 +88,7 @@ does not update them itself.
 `assets/icon.png` is the truth. If the library still shows the old mark, you did not
 repackage.
 
-## Checklist
+## 5. Checklist
 
 - [ ] 1024×1024 RGBA, ≤ 1 MiB
 - [ ] an editable source exists next to it

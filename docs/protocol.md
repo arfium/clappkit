@@ -1,4 +1,4 @@
-# The control pipe
+# THE CONTROL PIPE
 
 How a running clapp and Clatch talk: transport, framing, the vocabulary, signals, and the
 lifecycle. This is the **runtime** half of the contract.
@@ -9,21 +9,21 @@ it. The **static** half — the package and its manifest — is [`format.md`](fo
 Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch cannot
 already know: no echoed id, no sequence number, no reserved-but-empty method.
 
-> **This is the source of truth.** The Clatch launcher implements it; where the launcher
-> disagrees with this document, the launcher is the bug. Changes land here first.
 
-## Dependency & launch
+## 1. Dependency and launch
 
 A clapp **runs only under Clatch** (the Steam↔game dependency). Clatch is the
 parent: it spawns the app and injects identity into the environment *before* the
 app's code runs; the app connects back.
 
-First thing in `main`, the app calls **`clatch_init(appId)`**:
+First thing in `main`, the app calls **`clatch_init(appId)`**, which resolves to exactly
+one outcome:
 
-- **wired** — `CLATCH_INSTANCE_TOKEN` present → continue (if `CLATCH_APP_ID != appId`,
-  hard error).
-- **standalone** — `CLATCH_STANDALONE=1` → continue, no launcher (dev hatch).
-- **neither** → `exec clatch run <appId>` and exit.
+| outcome | condition | action |
+|---|---|---|
+| **wired** | `CLATCH_INSTANCE_TOKEN` present | continue; if `CLATCH_APP_ID != appId`, hard error |
+| **standalone** | `CLATCH_STANDALONE=1` | continue with no launcher — the dev hatch |
+| **relaunch** | neither of the above | `exec clatch run <appId>` and exit |
 
 Injected into the child's environment, before its code runs:
 
@@ -33,12 +33,13 @@ Injected into the child's environment, before its code runs:
 | `CLATCH_CONTROL_ADDR` | the socket path or pipe name to connect back to |
 | `CLATCH_INSTANCE_TOKEN` | a one-time secret proving this process is the spawned one |
 | `CLATCH_DATA_DIR` | `~/.clatch/appdata/<id>` — the **one** place an app writes durable state, so uninstall can erase the whole footprint. Survives uninstall; `purge` is what removes it |
+| `CLATCH_BIN` | the directory where the launcher links every granted CLI shorthand, so one clapp can invoke another's `cli` by name |
 
 **No protocol version is injected.** The major the app targets is the manifest's
 `protocol` ([`format.md`](format.md)), validated at install — so a running instance is
 compatible by construction and there is no runtime negotiation.
 
-## Transport
+## 2. Transport
 
 Clatch is the **server**; the app connects back to `CLATCH_CONTROL_ADDR`. One
 endpoint **per instance**:
@@ -51,7 +52,7 @@ closed = instance gone (no polling, no heartbeat). Dev hatch: with no launcher, 
 the address by hand (`--control-addr <addr>` / `CLATCH_CONTROL_ADDR`) — the only
 place identity is self-asserted.
 
-## Framing
+## 3. Framing
 
 Each message is a **4-byte big-endian length `N`**, then **`N` bytes of UTF-8 JSON**.
 
@@ -62,18 +63,20 @@ connection** — it never drains or skips. `N` has one sanity bound (**1 MiB**; 
 messages are tiny); past it, close. There is no resync machinery. A clean
 end-of-stream means the peer closed.
 
-## Envelope — JSON-RPC 2.0
+## 4. Envelope — JSON-RPC 2.0
 
-Every message carries `"jsonrpc": "2.0"` and is one of:
+Every message carries `"jsonrpc": "2.0"` and is exactly one of:
 
-- **request** — `id` (number) + `method` + `params`; expects a response.
-- **notification** — `method` + `params`, no `id` (fire-and-forget).
-- **response** — `id` + `result` | `error {code, message}`.
+| message | fields | expects |
+|---|---|---|
+| **request** | `id` (number) · `method` · `params` | a response with the same `id` |
+| **notification** | `method` · `params` (no `id`) | nothing — fire-and-forget |
+| **response** | `id` · `result` **or** `error {code, message}` | — |
 
-Ids are **per-direction**, starting at 1. Field names are **camelCase**. The stream
-is ordered, so there is **no sequence number** anywhere.
+Ids are **per-direction**, starting at 1. Field names are **camelCase**. The stream is
+ordered, so there is **no sequence number** anywhere.
 
-## Handshake
+## 5. Handshake
 
 The app's first, and only, request:
 
@@ -91,15 +94,19 @@ Register carries **only the token** — the one thing Clatch cannot already know
   install (Clatch refuses to install an app whose major it does not support, so a
   running instance is compatible by construction — no runtime negotiation).
 
-`hostContext` is the **only** response body an app has to read. It carries the launcher's
-own version under `clatch`, and is forward-safe: treat unknown keys as data you may ignore,
-never as an error.
+The register response — `hostContext` — is the **only** response body an app has to read:
+
+| field | is |
+|---|---|
+| `hostContext.clatch` | the launcher's own version, e.g. `"0.4.5"` |
+
+It is forward-safe: an unknown key is data an app may ignore, never an error.
 
 The token proves the connecting process is the one Clatch spawned (it was injected
 into that child's environment, nowhere else). An app that never registers is killed
 at the spawn timeout and reported as an exit.
 
-## Vocabulary
+## 6. Vocabulary
 
 The whole surface. Adding a method is a deliberate act.
 
@@ -118,10 +125,17 @@ request from the app gets an error and Clatch keeps draining, so a misbehaving a
 can never wedge its own pipe. There are **no reserved methods** — an app knows its
 own focus (a native window event) and its own liveness *is* the socket.
 
-## Signals — `app.toAgent`
+## 7. Signals — `app.toAgent`
 
 A signal is a fire-and-forget message to the agent(s), carrying no durable state; the
-agent reads real state through the app's CLI.
+agent reads real state through the app's CLI. `app.toAgent` carries:
+
+| field | is |
+|---|---|
+| `id` | the signal's declared, stable identifier — not a per-emission number |
+| `type` | `run` · `context` · `buffered` (below); stamped on the wire and re-validated against the manifest |
+| `target` | a list of agent **ids**; empty or omitted fans out to every bound-and-uncut agent |
+| `payload` | the app's own JSON, passed through to the agent unread by Clatch |
 
 **The declaration is the authority.** Each signal is declared once in the manifest
 `connector.signals` as `{id, type}`, `type ∈ run | context | buffered`. `id` is the
@@ -148,7 +162,13 @@ invoked the app's CLI) or the `app.agents` roster (Connected agents).
 or **none**: if any receiver cannot accept it (full inbox for `run`, full context
 queue for `context`), the whole emission is refused and Clatch sends
 **`app.toAgentRefused {id, agent, reason}`**, where `agent` is the **agent id** of the
-first receiver (in id order) that could not accept and `reason` is `inbox_full` | `queue_full`.
+first receiver (in id order) that could not accept, and `reason` is one of:
+
+| `reason` | when |
+|---|---|
+| `inbox_full` | a `run` receiver's inbox is full |
+| `queue_full` | a `context` receiver's queue is full |
+
 `buffered` is exempt (one replace-in-place slot, so it never refuses). Partial
 fan-out is forbidden: two agents driven by one app diverge the instant one silently
 misses a signal the other got.
@@ -156,18 +176,27 @@ misses a signal the other got.
 `app.notify {text}` is a short line for the **user's Clatch chat** (distinct from the
 app's own GUI) — e.g. surfacing a refusal.
 
-## Connected agents — `app.agents`
+## 8. Connected agents — `app.agents`
 
 Clatch pushes the roster of agents **bound to this app** — a full snapshot, once
 after register and again on every change (a bind/unbind, rename, model switch, new
 avatar). The app just **replaces its view** (the ordered stream delivers snapshots in
 order; there is no seq).
 
-Each entry is `{id, name, backend, model?, avatar?}`, `avatar = {mime, path, width,
-height}` (an absolute, same-machine path). The roster is **only this app's own bound
-agents** — never other apps' agents, and never an agent's permissions, cuts, or the
-other apps it is bound to (the local trust boundary). It exists so the app can pick a
-`target` (Signals) and map an id → its display name.
+Each roster entry is:
+
+| field | is |
+|---|---|
+| `id` | the agent's immutable identity — the key for everything per-agent |
+| `name` | the display name; unique but re-pointable |
+| `backend` | the agent's model backend |
+| `model?` | the specific model, when the backend has one |
+| `avatar?` | `{mime, path, width, height}` — an absolute, same-machine image path |
+
+The roster is **only this app's own bound agents** — never other apps' agents, and never
+an agent's permissions, cuts, or the other apps it is bound to (the local trust
+boundary). It exists so the app can pick a `target` (§ 7. Signals) and map an id → its
+display name.
 
 - **`id` is the key; `name` is for humans.** The `id` is immutable for the agent's
   whole lifetime; the `name` is unique but re-pointable — **same id + new name = the
@@ -179,7 +208,7 @@ other apps it is bound to (the local trust boundary). It exists so the app can p
   agent's CLI shell carries `CLATCH_AGENT_ID` (its immutable id), so "reply to whoever
   called me" needs no roster lookup — target that id. It stays valid across a rename.
 
-## Lifecycle
+## 9. Lifecycle
 
 - `app.ping` → reply `{ok:true}`.
 - `app.shutdown` → reply, then exit cleanly.
@@ -187,7 +216,7 @@ other apps it is bound to (the local trust boundary). It exists so the app can p
   fail-fast on a bad frame), a **wired** app exits rather than linger as a zombie;
   standalone dev stays up (no launcher to be orphaned from).
 
-## Errors
+## 10. Errors
 
 Errors exist only for **requests** (`app.register`). Signals are fire-and-forget: a
 violation (an undeclared id, a type mismatch) is **dropped** launcher-side and never
@@ -207,7 +236,7 @@ at **install** from the manifest's `protocol`, so a running instance is already
 compatible, and a launcher that rate-limited a local app would be throttling the human
 who launched it.
 
-## Security & versioning
+## 11. Security and versioning
 
 - **Local trust boundary.** Same OS user; Clatch owns the socket directory (`0700`).
   Identity is assigned by injection; the token only proves it.

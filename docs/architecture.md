@@ -1,10 +1,10 @@
-# Architecture
+# ARCHITECTURE
 
 How a clapp is put together, and why. The contract itself — manifest, wire, vocabulary —
 is [`protocol.md`](protocol.md); that document is normative and this one explains it.
 Read that one when you need the exact shape of a field.
 
-## The boundary
+## 1. The boundary
 
 Clatch owns the launcher, the registry, the Clatch↔app control pipe, and the agent host.
 It is **blind to your app's insides**. The agent operates your app by running *your own
@@ -18,7 +18,7 @@ So the contract is three surfaces:
 
 Everything else here is one good shape, not a requirement.
 
-## One backend, two frontends
+## 2. One backend, two frontends
 
 ```
    human ──clicks──▶  window (React)  ──┐
@@ -36,7 +36,7 @@ makes it testable, and it is why the tests are where the rules actually live.
 **One binary, two roles.** `<cli> app` is the window Clatch launches; `<cli> <verb>` is the
 agent's CLI. `clappkit::role` decides which at startup, so a clapp ships one executable.
 
-## Two channels
+## 3. Two channels
 
 Keeping these apart is the whole trick:
 
@@ -50,19 +50,17 @@ Keeping these apart is the whole trick:
 
 `<cli> status` travels the left channel; Clatch never sees it. Signals travel the right.
 
-## Run only under Clatch
+## 4. Run only under Clatch
 
-`clappkit` calls `clatch_init` first thing in `app` mode:
+`clappkit` calls `clatch_init` first thing in `app` mode; its three outcomes — wired,
+standalone, relaunch — are [protocol.md](protocol.md) § 1. Dependency and launch. That section owns
+that table. The effect that matters here: a bare double-click of an installed clapp
+has no `CLATCH_*` in its environment, so it takes the relaunch path and routes back through
+Clatch, and the launcher-spawned copy is the one that runs.
 
-- `CLATCH_INSTANCE_TOKEN` present → continue, then register. A mismatched `CLATCH_APP_ID`
-  is a hard error.
-- `CLATCH_STANDALONE=1` → continue with no launcher. The dev hatch.
-- neither → `exec clatch run <appId>` and exit, so a bare double-click routes back through
-  Clatch and the *installed* copy runs.
+The launch command must never scrub `CLATCH_*` from the environment, or the guard breaks.
 
-The launch command must never scrub `CLATCH_*` from the environment or the guard breaks.
-
-## Signals
+## 5. Signals
 
 A signal is a fire-and-forget notice carrying no durable state — the agent reads the real
 state through your CLI. Declare each one in `clatch.json` (`connector.signals`); the
@@ -91,14 +89,14 @@ intersected with the cut matrix, so targeting narrows and never widens. The app 
 precisely because Clatch injects `CLATCH_AGENT_ID` into the calling agent's shell, so the
 app knows who invoked it — and an id survives a rename.
 
-## Always-on apps
+## 6. Always-on apps
 
 Clatch ships no cron, no scheduler and no app autostart — no clapp is started at boot.
 A timer or observer app is an ordinary clapp that, **while it is running**, keeps its own
 loop and emits a `run` signal when it fires. Missed-schedule catch-up and persistence are
 your policy. `clock-clapp` is this pattern.
 
-## Where each concern lives
+## 7. Where each concern lives
 
 | Concern | Where | Fork it? |
 |---|---|---|
@@ -113,7 +111,7 @@ your policy. `clock-clapp` is this pattern.
 Identity is read from `clatch.json` at runtime, never duplicated into the code — so a fork
 edits one file and everything follows.
 
-## The look
+## 8. The look
 
 Each clapp wears **its own** brand: WhatsApp's green, Telegram's blue, the tokens in that
 app's `src/styles.css`. There is no shared theme to inherit and nothing to keep in sync.
