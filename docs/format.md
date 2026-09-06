@@ -93,6 +93,15 @@ the agent-facing surface.
 | `protocol` | clapp:app only | integer; the control-pipe major this element targets. **Forbidden on a clapp:cli**, which speaks no pipe | `2` |
 | `publisher` | no | who published it; a package's id already implies its maker | `"acme"` |
 
+**The id is the identity on this machine; the namespace inside it is a claim.** `apps/<id>`,
+`appdata/<id>` and the macOS bundle identifier are all this one field, so every package
+carries it and one built by hand names itself freely - there is no realm to ask. What a
+package may not do is claim a namespace on a marketplace that was granted to somebody else.
+A realm composes the id it expects from the namespace it granted the publisher and the name
+they typed, and **refuses a package whose `id` disagrees; it never repairs one.** That check
+is the registry's, in `clatch-server/docs/`, and it is the same rule a skill's `publisher`
+already follows (elements.md § 6): yours to omit locally, never yours to claim.
+
 ## 5. Presentation
 
 | field | required | rule | example |
