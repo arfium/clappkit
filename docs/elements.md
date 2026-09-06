@@ -2,8 +2,8 @@
 
 The three element types, and what each may declare. *Element* itself is defined in
 [taxonomy.md](taxonomy.md) § 1. The unit; here it splits into exactly **three kinds**,
-declared and never inferred — the manifest says what a package is, and nothing sniffs its
-contents to guess. Two are packages — a `.clapp`, a zip rooted at `clatch.json` and
+declared and never inferred - the manifest says what a package is, and nothing sniffs its
+contents to guess. Two are packages - a `.clapp`, a zip rooted at `clatch.json` and
 extracted to a **depot** on install ([taxonomy.md](taxonomy.md) § 2. The package). The
 third is a document.
 
@@ -18,18 +18,18 @@ third is a document.
 | Process | `launch` | never | never |
 | Control pipe | registers | never | never |
 | Signals to the agent | declared, typed | **never** | never |
-| Agent surface | its CLI, granted | its CLI, granted | none — knowledge, not commands |
-| Login verbs | never — its window owns auth | optional | never |
+| Agent surface | its CLI, granted | its CLI, granted | none - knowledge, not commands |
+| Login verbs | never - its window owns auth | optional | never |
 
 ## 2. The name and the field
 
-`clapp:app` and `clapp:cli` are the **kind names** — what these things are called
+`clapp:app` and `clapp:cli` are the **kind names** - what these things are called
 everywhere they are discussed, listed or compared. `clapp:` is the namespace, and the part
 after the colon is the kind within it.
 
 Inside a `clatch.json` you are **already in that namespace**, so the `type` field carries
 the short form and nothing else: `"clapp"` for a clapp:app, `"cli"` for a clapp:cli. A
-manifest that writes the qualified name is not installable — the launcher matches the
+manifest that writes the qualified name is not installable - the launcher matches the
 short form exactly.
 
 The field is **optional and defaults to `"clapp"`**, so every manifest written before the
@@ -46,7 +46,7 @@ and validate/install reject anything that crosses them. There are no hybrids: a 
 that grows a window becomes a clapp:app by changing its type, not by drifting into one.
 
 **A clapp:cli carries no path back to the agent.** No pipe, no register, no signals. An
-agent reaches one the way a person does — by running it. That is the definition of the
+agent reaches one the way a person does - by running it. That is the definition of the
 type, not a missing feature.
 
 **Installing grants nothing.** A grant does. Visibility and permission are separate.
@@ -61,7 +61,7 @@ A full app: a window for the human, a CLI for the agent, one binary serving both
 state. It declares `launch`, registers on the control pipe, and may emit typed signals
 that wake or inform its agent.
 
-Auth is its own window's business — the login verbs are forbidden here, because an app
+Auth is its own window's business - the login verbs are forbidden here, because an app
 with a screen has somewhere better to ask.
 
 ## 5. clapp:cli
@@ -71,7 +71,7 @@ One well-formed command-line tool, packaged and formatted for Clatch. Content is
 clapp:app.
 
 **`connector.cli` is a name, not a filename.** It resolves the way an OS resolves an
-executable: the declared path, else that path plus the host's executable extension — so
+executable: the declared path, else that path plus the host's executable extension - so
 `cli: "parts"` finds `bin/parts` on unix and `bin/parts.exe` on Windows from one manifest. Validate and
 install share the resolver, so they cannot disagree.
 
@@ -81,7 +81,7 @@ says the kind is why.
 ### Login
 
 Some tools are useless until signed in, and sign-in belongs to the vendor's own browser
-flow. A cli may declare any subset of three verbs — the shape a tool cannot honour is the
+flow. A cli may declare any subset of three verbs - the shape a tool cannot honour is the
 shape it must not claim.
 
 ```jsonc
@@ -96,7 +96,7 @@ shape it must not claim.
 | verb | is | rule |
 |---|---|---|
 | `login` | the command that signs in | run bounded; a tool that insists on a TTY fails fast, naming the command to run by hand |
-| `loginCheck` | the command that reports standing | the **only** source of truth — exit 0 means signed in; without it the state is unknown and never claimed |
+| `loginCheck` | the command that reports standing | the **only** source of truth - exit 0 means signed in; without it the state is unknown and never claimed |
 | `logout` | the command that signs out | matters as much as `login`; make it idempotent |
 
 `logout` and purge are different acts: purge erases Clatch's copy of a credential, while
@@ -106,7 +106,7 @@ credential must be able to give it back.
 ## 6. skill
 
 Knowledge, not a program: **one Markdown file** whose YAML front matter is its entire
-metadata. No `clatch.json`, no folder, no package — a document needs no envelope.
+metadata. No `clatch.json`, no folder, no package - a document needs no envelope.
 
 ```markdown
 ---
@@ -125,11 +125,11 @@ tags: [writing, docs]      # optional
 - **No front matter is a refusal.** A description the launcher invented would be a skill
   nobody wrote.
 - **A manifest may never say `skill`.** One that claims the kind is rejected, and told
-  where its metadata belongs instead — a skill has no `clatch.json` to claim it in.
+  where its metadata belongs instead - a skill has no `clatch.json` to claim it in.
 
 ## 7. Naming
 
-**An element's repository ends in `-clapp` whatever its type** — a clapp:cli lives in
+**An element's repository ends in `-clapp` whatever its type** - a clapp:cli lives in
 `acme/parts-clapp`, never `acme/parts-cli`. The suffix names the ecosystem, not the kind,
 so a repository never needs renaming when its type changes. The launcher reads the manifest and ignores the directory
 name entirely.

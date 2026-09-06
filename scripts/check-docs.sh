@@ -176,6 +176,15 @@ documented |= set(_re.findall(r"^#+ \d+\. `([a-zA-Z][a-zA-Z0-9]*)`", fmt, _re.M)
 for k in sorted(example_keys - documented):
     problems.append(f"docs/format.md: the manifest example shows `{k}`, which no field table or section documents")
 
+# 9. No em (U+2014) or en (U+2013) dash in anything we author. The sibling trees hold none
+#    (clatch's quality_gate.sh enforces the same), and a hyphen, colon or reword always says
+#    it in ASCII. Built from code points so this checker holds neither dash itself.
+_em, _en = chr(0x2014), chr(0x2013)
+for p, s in text.items():
+    for i, ln in enumerate(s.split("\n"), 1):
+        if _em in ln or _en in ln:
+            problems.append(f"{p}:{i}: em/en dash present, use a plain hyphen, colon, or reword")
+
 if problems:
     print("docs: consistency", file=sys.stderr)
     for x in sorted(set(problems)):

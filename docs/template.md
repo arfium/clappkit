@@ -2,7 +2,7 @@
 
 Rename, replace the app, declare the surface, verify.
 
-## 1. Rename — one command
+## 1. Rename - one command
 
 Pick an **id** (reverse-DNS, `com.acme.notes`), a **CLI name** (short, lowercase, unique
 among installed clapps, `notes`), and a display **name** (`Notes`):
@@ -15,7 +15,7 @@ It rewrites `clatch.json`, `package.json`, the Cargo manifests and the scripts, 
 prints any leftover mentions. It does not touch your prose, your signals or your logic.
 
 Identity is read from `clatch.json` at runtime, so there is no second copy in the code to
-keep aligned — but three things must still agree, and only the last is checked for you:
+keep aligned - but three things must still agree, and only the last is checked for you:
 
 | | |
 |---|---|
@@ -30,25 +30,25 @@ keep aligned — but three things must still agree, and only the last is checked
 
 Three files carry the demo; the rest is transport you keep.
 
-- **`src-tauri/src/state.rs`** — your state and the methods that mutate it. Both surfaces
+- **`src-tauri/src/state.rs`** - your state and the methods that mutate it. Both surfaces
   call the same ones. Emit a signal **only on user actions**: the agent already knows about
   its own writes.
-- **`src-tauri/src/cli.rs`** — one arm per verb, and the help text. That help is the
+- **`src-tauri/src/cli.rs`** - one arm per verb, and the help text. That help is the
   agent's *only* manual; a verb missing from it does not exist as far as the agent knows.
-- **`src/`** — the window. Talk to the core through `bridge.ts` and nothing else.
+- **`src/`** - the window. Talk to the core through `bridge.ts` and nothing else.
 
 Leave `clappkit` alone: role dispatch, the bootstrap, both channels, paths, atomic writes
 and the media boundary are shared and already correct.
 
 ## 3. Declare the surface
 
-- **`connector.commands`** — one `{name, about}` per verb. Each becomes its own grant
+- **`connector.commands`** - one `{name, about}` per verb. Each becomes its own grant
   (`Bash(<cli> <name>:*)`), so a human can grant a subset.
-- **`connector.signals`** — every signal, as `{id, type}` with `type ∈ run | context |
+- **`connector.signals`** - every signal, as `{id, type}` with `type ∈ run | context |
   buffered`. The declaration is the authority: Clatch re-validates the wire type against it
   and drops a mismatch. Declaring `poke` as `run` is what makes it wake an agent.
-- **`launch`** — in the repo, one command per OS you build (`macos`, `windows`, …).
-  Packaging then emits **one depot per platform, each carrying exactly one of them — its
+- **`launch`** - in the repo, one command per OS you build (`macos`, `windows`, …).
+  Packaging then emits **one depot per platform, each carrying exactly one of them - its
   own OS** (format.md § 6 requires a depot name a single platform); the rest are stripped,
   and the OSes your app supports are the depots the release ships, not a list in any one
   installed manifest ([format.md](format.md) § 10. Distribution).
@@ -69,7 +69,7 @@ clatch install ./<id>-*.clapp && clatch run <id>
 
 ## 5. Always-on apps
 
-Clatch ships no scheduler and no app autostart — no clapp is started at boot. An app
+Clatch ships no scheduler and no app autostart - no clapp is started at boot. An app
 that must act between user sessions keeps its own loop while running and emits a `run`
 signal when it fires. Persistence and
 missed-schedule policy are yours; Clatch gives you the wake and nothing more.
@@ -83,4 +83,4 @@ missed-schedule policy are yours; Clatch gives you the wake and nothing more.
 - A declared `icon` must exist on disk, or validate and install both fail.
 - `bin/<cli>` is a dev wrapper in the repo and the compiled binary inside `pkg/`. On macOS
   the depot's copy lives in a `.app` bundle, and `package.sh` rewrites `launch` and
-  `cliBin` to match — read those from the depot manifest, never assume `bin/<cli>`.
+  `cliBin` to match - read those from the depot manifest, never assume `bin/<cli>`.

@@ -3,8 +3,8 @@
 How a running clapp and Clatch talk: transport, framing, the vocabulary, signals, and the
 lifecycle. This is the **runtime** half of the contract.
 
-It is *not* the app's own GUI↔CLI channel — that one is the app's, and Clatch never sees
-it. The **static** half — the package and its manifest — is [`format.md`](format.md).
+It is *not* the app's own GUI↔CLI channel - that one is the app's, and Clatch never sees
+it. The **static** half - the package and its manifest - is [`format.md`](format.md).
 
 Design goals, in order: **safe · ordered · minimal**. Every field is one Clatch cannot
 already know: no echoed id, no sequence number, no reserved-but-empty method.
@@ -22,7 +22,7 @@ one outcome:
 | outcome | condition | action |
 |---|---|---|
 | **wired** | `CLATCH_INSTANCE_TOKEN` present | continue; if `CLATCH_APP_ID != appId`, hard error |
-| **standalone** | `CLATCH_STANDALONE=1` | continue with no launcher — the dev hatch |
+| **standalone** | `CLATCH_STANDALONE=1` | continue with no launcher - the dev hatch |
 | **relaunch** | neither of the above | `exec clatch run <appId>` and exit |
 
 Injected into the child's environment, before its code runs:
@@ -32,11 +32,11 @@ Injected into the child's environment, before its code runs:
 | `CLATCH_APP_ID` · `CLATCH_INSTANCE_ID` | the app's id from the registry, and this run's id |
 | `CLATCH_CONTROL_ADDR` | the socket path or pipe name to connect back to |
 | `CLATCH_INSTANCE_TOKEN` | a one-time secret proving this process is the spawned one |
-| `CLATCH_DATA_DIR` | `~/.clatch/appdata/<id>` — the **one** place an app writes durable state, so uninstall can erase the whole footprint. Survives uninstall; `purge` is what removes it |
+| `CLATCH_DATA_DIR` | `~/.clatch/appdata/<id>` - the **one** place an app writes durable state, so uninstall can erase the whole footprint. Survives uninstall; `purge` is what removes it |
 | `CLATCH_BIN` | the directory where the launcher links every granted CLI shorthand, so one clapp can invoke another's `cli` by name |
 
 **No protocol version is injected.** The major the app targets is the manifest's
-`protocol` ([`format.md`](format.md)), validated at install — so a running instance is
+`protocol` ([`format.md`](format.md)), validated at install - so a running instance is
 compatible by construction and there is no runtime negotiation.
 
 ## 2. Transport
@@ -44,12 +44,12 @@ compatible by construction and there is no runtime negotiation.
 Clatch is the **server**; the app connects back to `CLATCH_CONTROL_ADDR`. One
 endpoint **per instance**:
 
-- **Linux/macOS** — Unix domain socket, `~/.clatch/run/<instanceId>.sock` (dir `0700`).
-- **Windows** — named pipe, `\\.\pipe\clatch-<instanceId>`.
+- **Linux/macOS** - Unix domain socket, `~/.clatch/run/<instanceId>.sock` (dir `0700`).
+- **Windows** - named pipe, `\\.\pipe\clatch-<instanceId>`.
 
 No TCP, no port. The connection's lifetime **is** the instance's lifetime: socket
 closed = instance gone (no polling, no heartbeat). Dev hatch: with no launcher, pass
-the address by hand (`--control-addr <addr>` / `CLATCH_CONTROL_ADDR`) — the only
+the address by hand (`--control-addr <addr>` / `CLATCH_CONTROL_ADDR`) - the only
 place identity is self-asserted.
 
 ## 3. Framing
@@ -59,19 +59,19 @@ Each message is a **4-byte big-endian length `N`**, then **`N` bytes of UTF-8 JS
 **Fail-fast.** Both ends are Clatch (its daemon writes, the binding reads), so a
 malformed, zero-length, or over-`N` frame is a framing **bug**, and the stream is
 already desynced (the next length can't be trusted). The reader **closes the
-connection** — it never drains or skips. `N` has one sanity bound (**1 MiB**; control
+connection** - it never drains or skips. `N` has one sanity bound (**1 MiB**; control
 messages are tiny); past it, close. There is no resync machinery. A clean
 end-of-stream means the peer closed.
 
-## 4. Envelope — JSON-RPC 2.0
+## 4. Envelope - JSON-RPC 2.0
 
 Every message carries `"jsonrpc": "2.0"` and is exactly one of:
 
 | message | fields | expects |
 |---|---|---|
 | **request** | `id` (number) · `method` · `params` | a response with the same `id` |
-| **notification** | `method` · `params` (no `id`) | nothing — fire-and-forget |
-| **response** | `id` · `result` **or** `error {code, message}` | — |
+| **notification** | `method` · `params` (no `id`) | nothing - fire-and-forget |
+| **response** | `id` · `result` **or** `error {code, message}` | - |
 
 Ids are **per-direction**, starting at 1. Field names are **camelCase**. The stream is
 ordered, so there is **no sequence number** anywhere.
@@ -86,15 +86,15 @@ clatch → app:   { hostContext: { clatch: "0.4.5" } }   // ok
             |   error { code, message }             // IDENTITY_MISMATCH
 ```
 
-Register carries **only the token** — the one thing Clatch cannot already know:
+Register carries **only the token** - the one thing Clatch cannot already know:
 
-- **which** instance connected — the per-instance socket says it (§3);
-- **who** the app is, and **what signals** it may emit — the manifest says it ([`format.md`](format.md));
-- the **protocol major** the app targets — the manifest's `protocol` says it, read at
+- **which** instance connected - the per-instance socket says it (§3);
+- **who** the app is, and **what signals** it may emit - the manifest says it ([`format.md`](format.md));
+- the **protocol major** the app targets - the manifest's `protocol` says it, read at
   install (Clatch refuses to install an app whose major it does not support, so a
-  running instance is compatible by construction — no runtime negotiation).
+  running instance is compatible by construction - no runtime negotiation).
 
-The register response — `hostContext` — is the **only** response body an app has to read:
+The register response - `hostContext` - is the **only** response body an app has to read:
 
 | field | is |
 |---|---|
@@ -115,31 +115,31 @@ The whole surface. Adding a method is a deliberate act.
 | `app.register` | app→clatch | request | `{instanceToken}` |
 | `app.toAgent` | app→clatch | notification | `{id, type, target, payload}` |
 | `app.notify` | app→clatch | notification | `{text}` |
-| `app.ping` | clatch→app | request | — → `{ok:true}` |
-| `app.shutdown` | clatch→app | request | — → reply, then exit |
+| `app.ping` | clatch→app | request | - → `{ok:true}` |
+| `app.shutdown` | clatch→app | request | - → reply, then exit |
 | `app.agents` | clatch→app | notification | `{agents:[{id, name, backend, model?, avatar?}]}` |
 | `app.toAgentRefused` | clatch→app | notification | `{id, agent, reason}` (`agent` = an agent id) |
 
 The app→clatch surface is **notifications only** apart from `app.register`; any other
 request from the app gets an error and Clatch keeps draining, so a misbehaving app
-can never wedge its own pipe. There are **no reserved methods** — an app knows its
+can never wedge its own pipe. There are **no reserved methods** - an app knows its
 own focus (a native window event) and its own liveness *is* the socket.
 
-## 7. Signals — `app.toAgent`
+## 7. Signals - `app.toAgent`
 
 A signal is a fire-and-forget message to the agent(s), carrying no durable state; the
 agent reads real state through the app's CLI. `app.toAgent` carries:
 
 | field | is |
 |---|---|
-| `id` | the signal's declared, stable identifier — not a per-emission number |
+| `id` | the signal's declared, stable identifier - not a per-emission number |
 | `type` | `run` · `context` · `buffered` (below); stamped on the wire and re-validated against the manifest |
 | `target` | a list of agent **ids**; empty or omitted fans out to every bound-and-uncut agent |
 | `payload` | the app's own JSON, passed through to the agent unread by Clatch |
 
 **The declaration is the authority.** Each signal is declared once in the manifest
 `connector.signals` as `{id, type}`, `type ∈ run | context | buffered`. `id` is the
-signal's stable **identifier** (e.g. `"poke"`), *not* a per-emission id — the stream
+signal's stable **identifier** (e.g. `"poke"`), *not* a per-emission id - the stream
 is ordered, there is no per-message counter. `app.toAgent` **stamps the declared type
 onto the wire** (intent is explicit), and Clatch **re-validates** it against the
 manifest: a wire `type` that disagrees, or an undeclared `id`, is **dropped
@@ -148,11 +148,11 @@ its intent checkably.
 
 | type | effect |
 |---|---|
-| `run` | starts a turn on an **idle** agent; on a busy one it queues behind the in-flight turn — nothing is preempted |
-| `context` | queued, injected at the next turn boundary — in order, lossless |
+| `run` | starts a turn on an **idle** agent; on a busy one it queues behind the in-flight turn - nothing is preempted |
+| `context` | queued, injected at the next turn boundary - in order, lossless |
 | `buffered` | replaces the agent's one chat-buffer slot; rides the user's next prompt |
 
-`target` is a list of agent **ids** — the immutable identity, never the mutable
+`target` is a list of agent **ids** - the immutable identity, never the mutable
 display `name` (Connected agents). Empty/omitted = fan-out to every bound-and-uncut agent; non-empty
 = only those, **still intersected with the cut matrix** (an app can never reach an
 agent that did not grant it). Ids come from `CLATCH_AGENT_ID` (the id of the agent that
@@ -174,11 +174,11 @@ fan-out is forbidden: two agents driven by one app diverge the instant one silen
 misses a signal the other got.
 
 `app.notify {text}` is a short line for the **user's Clatch chat** (distinct from the
-app's own GUI) — e.g. surfacing a refusal.
+app's own GUI) - e.g. surfacing a refusal.
 
-## 8. Connected agents — `app.agents`
+## 8. Connected agents - `app.agents`
 
-Clatch pushes the roster of agents **bound to this app** — a full snapshot, once
+Clatch pushes the roster of agents **bound to this app** - a full snapshot, once
 after register and again on every change (a bind/unbind, rename, model switch, new
 avatar). The app just **replaces its view** (the ordered stream delivers snapshots in
 order; there is no seq).
@@ -187,26 +187,26 @@ Each roster entry is:
 
 | field | is |
 |---|---|
-| `id` | the agent's immutable identity — the key for everything per-agent |
+| `id` | the agent's immutable identity - the key for everything per-agent |
 | `name` | the display name; unique but re-pointable |
 | `backend` | the agent's model backend |
 | `model?` | the specific model, when the backend has one |
-| `avatar?` | `{mime, path, width, height}` — an absolute, same-machine image path |
+| `avatar?` | `{mime, path, width, height}` - an absolute, same-machine image path |
 
-The roster is **only this app's own bound agents** — never other apps' agents, and never
+The roster is **only this app's own bound agents** - never other apps' agents, and never
 an agent's permissions, cuts, or the other apps it is bound to (the local trust
 boundary). It exists so the app can pick a `target` (§ 7. Signals) and map an id → its
 display name.
 
 - **`id` is the key; `name` is for humans.** The `id` is immutable for the agent's
-  whole lifetime; the `name` is unique but re-pointable — **same id + new name = the
+  whole lifetime; the `name` is unique but re-pointable - **same id + new name = the
   same agent, re-labeled**. Key every per-agent thing (state, targets, rows) on the
   `id` and only *show* the `name`. **Targeting or keying by name is a bug**: the app's
   job is to surface the name and speak id on the wire. A rename arrives as a fresh
-  snapshot with the same id — update the label in place, never drop and re-create.
+  snapshot with the same id - update the label in place, never drop and re-create.
 - **`CLATCH_AGENT_ID` names the caller.** When the app is a tool an agent ran, that
   agent's CLI shell carries `CLATCH_AGENT_ID` (its immutable id), so "reply to whoever
-  called me" needs no roster lookup — target that id. It stays valid across a rename.
+  called me" needs no roster lookup - target that id. It stays valid across a rename.
 
 ## 9. Lifecycle
 
@@ -246,7 +246,7 @@ who launched it.
   install. Within a major, only additive change (new optional fields, new optional
   notifications); a breaking change is a new major, served alongside the old for a
   documented window so installed apps do not break on a launcher update.
-- **Current major: 2** (2026-07-25) — agent identity became the **id/name split**:
+- **Current major: 2** (2026-07-25) - agent identity became the **id/name split**:
   `app.toAgent.target` and `app.toAgentRefused.agent` carry agent **ids**, `app.agents`
   entries carry `{id, name, …}`, and the caller env is **`CLATCH_AGENT_ID`**. Major 1
   predates every shipped clapp and is **not** served alongside (the compatibility

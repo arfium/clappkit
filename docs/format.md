@@ -4,15 +4,15 @@ What a package contains and what its manifest may say: the depot layout, every f
 `clatch.json`, what each element type is allowed to declare, and the bounds a launcher
 enforces before it will open one.
 
-This is the **static** half of the contract, read at **install**. What each kind *is* —
-clapp:app, clapp:cli, skill — is [`elements.md`](elements.md); the runtime half a clapp:app
+This is the **static** half of the contract, read at **install**. What each kind *is* -
+clapp:app, clapp:cli, skill - is [`elements.md`](elements.md); the runtime half a clapp:app
 speaks is [`protocol.md`](protocol.md).
 
 
 ## 1. The package
 
 **A `.clapp` packages the two types that have a payload**: a zip rooted at `clatch.json`,
-where the manifest's `type` inside selects the treatment — never the file extension, never
+where the manifest's `type` inside selects the treatment - never the file extension, never
 the repo name. **A skill ships as its `.md`** through the same routes; a document needs no
 envelope.
 
@@ -25,12 +25,12 @@ com.example.clapp-macos-arm64.clapp
 
 **Entries are stored or deflated, and nothing else.** The reader is deflate-only by
 decision: bzip2, lzma and zstd were three C libraries carried for a method nobody
-compressed with. An entry in another method is refused at install, loudly and by name —
+compressed with. An entry in another method is refused at install, loudly and by name -
 never skipped, because a depot missing a file it promised is worse than one that will not
 open.
 
 **One platform per depot.** Which depot the host gets, and how a release must be laid out
-for it to be found, is [Distribution](#distribution) below. A depot's manifest names only its OWN OS in `launch` — one key, the platform
+for it to be found, is [Distribution](#distribution) below. A depot's manifest names only its OWN OS in `launch` - one key, the platform
 these bytes run on, and no other OS keys to disagree with them. Which platforms the app
 covers at all is which depots the release ships, never a list inside one manifest.
 
@@ -51,11 +51,11 @@ The manifest carries two independent majors, and neither is the element's `versi
 | `manifestVersion` | the schema of `clatch.json` itself | a field becomes mandatory, or a meaning changes |
 | `protocol` | the control-pipe major a clapp:app speaks ([protocol.md](protocol.md) § 11. Security and versioning) | the pipe's vocabulary breaks |
 
-**Additive-only within a `manifestVersion`** — new optional fields only, never a new
+**Additive-only within a `manifestVersion`** - new optional fields only, never a new
 mandatory one; a launcher ignores fields it does not know. A breaking change bumps the
 major, and the change is written at the point of use, loudly.
 
-## 3. The manifest — `clatch.json`
+## 3. The manifest - `clatch.json`
 
 The app's static declaration, read at **install**. It is the single source for
 everything Clatch knows about the app before it runs: identity, how to launch, and
@@ -85,7 +85,7 @@ the agent-facing surface.
 | field | required | rule | example |
 |---|---|---|---|
 | `manifestVersion` | **yes** | integer; the schema major | `1` |
-| `type` | no | the element's kind in **short form**: `"clapp"` for a clapp:app, `"cli"` for a clapp:cli. Defaults to `"clapp"`. **Never `skill`**, and never the qualified name — inside a `clatch.json` the `clapp:` namespace is already implied | `"cli"` |
+| `type` | no | the element's kind in **short form**: `"clapp"` for a clapp:app, `"cli"` for a clapp:cli. Defaults to `"clapp"`. **Never `skill`**, and never the qualified name - inside a `clatch.json` the `clapp:` namespace is already implied | `"cli"` |
 | `id` | **yes** | reverse-DNS, path-segment safe: no `/`, no `..` | `"com.acme.notes"` |
 | `name` | **yes** | non-empty; the display name | `"Notes"` |
 | `description` | **yes** | non-empty one-liner; shown in the library and given to an agent on grant | `"Notes your agent can read and write."` |
@@ -103,13 +103,13 @@ the agent-facing surface.
 | `about` | no | long-form text; `description` stays the one-liner | `"Notes keeps…"` |
 | `tags` | no | library tags | `["productivity"]` |
 
-Sizes and formats are bounded — see § 9. Pictures below.
+Sizes and formats are bounded - see § 9. Pictures below.
 
-**`description` and `about` are the manifest's own field names.** A store presents them under its own labels — the registry renames them for the card and the detail page — and that mapping is the registry's, in `clatch-server/docs/`; this document names only what the manifest carries.
+**`description` and `about` are the manifest's own field names.** A store presents them under its own labels - the registry renames them for the card and the detail page - and that mapping is the registry's, in `clatch-server/docs/`; this document names only what the manifest carries.
 
 ## 6. `launch`
 
-Required on a **clapp:app**, forbidden on a **clapp:cli**. Exactly one OS key — the one
+Required on a **clapp:app**, forbidden on a **clapp:cli**. Exactly one OS key - the one
 this depot runs on. The same version's Windows depot carries a `windows` key instead,
 which is why `launch` differs across a version's depots (§ 10. Distribution).
 
@@ -119,7 +119,7 @@ which is why `launch` differs across a version's depots (§ 10. Distribution).
 
 | key | required | rule | example |
 |---|---|---|---|
-| `macos` · `windows` · `linux` | exactly one | the command for **this depot's own OS**, relative to the content root — **enforced at validation**, not merely expected: an absolute path, any `..`, and an empty segment (`bin//a`) are all refused. Spaces and ordinary characters are fine (`"My App.app/Contents/MacOS/app"` passes). A **second OS key is refused**; which OSes the app supports is the release's asset grid, not this object | `"bin/notes"` |
+| `macos` · `windows` · `linux` | exactly one | the command for **this depot's own OS**, relative to the content root - **enforced at validation**, not merely expected: an absolute path, any `..`, and an empty segment (`bin//a`) are all refused. Spaces and ordinary characters are fine (`"My App.app/Contents/MacOS/app"` passes). A **second OS key is refused**; which OSes the app supports is the release's asset grid, not this object | `"bin/notes"` |
 | `args` | no | arguments appended to whichever command was chosen | `["app"]` |
 
 The command must stay inside the depot because **`args` are appended verbatim**. An
@@ -131,14 +131,14 @@ absolute one is not a package pointing somewhere unusual; it is `/bin/sh` plus
 | field | required | rule | example |
 |---|---|---|---|
 | `cli` | **yes** | the shorthand an agent types. A NAME, not a filename | `"notes"` |
-| `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>`. Every component must be a **safe segment** — `[A-Za-z0-9._-]`, no `..`, no `*`, no whitespace — the same rule the id rides, because the value is interpolated into an exec shim where `$( )` would otherwise expand | `"bin/notes"` |
+| `cliBin` | no | path relative to the content root, resolved with the host executable extension; default `bin/<cli>`. Every component must be a **safe segment** - `[A-Za-z0-9._-]`, no `..`, no `*`, no whitespace - the same rule the id rides, because the value is interpolated into an exec shim where `$( )` would otherwise expand | `"bin/notes"` |
 | `commands` | no | the verbs an agent may be granted | see below |
 | `signals` | no | the notices the element may send its agent. **Forbidden on a clapp:cli** | see below |
 | `login` · `loginCheck` · `logout` | no | the tool's own auth verbs. **clapp:cli only** | `"auth login"` |
 
 ### `connector.commands[]`
 
-Each entry is separately grantable, so this list is the **permission grain** — not the
+Each entry is separately grantable, so this list is the **permission grain** - not the
 manual. The manual is `<cli> -h`.
 
 ```jsonc
@@ -161,7 +161,7 @@ it, or whose id was never declared, is dropped rather than honoured.
 
 | field | required | rule | example |
 |---|---|---|---|
-| `id` | **yes** | the signal's stable name — not a per-emission number | `"note.added"` |
+| `id` | **yes** | the signal's stable name - not a per-emission number | `"note.added"` |
 | `type` | **yes** | `run` starts a turn on an idle agent, and queues on a busy one · `context` is queued for its next turn · `buffered` rides the user's next prompt | `"context"` |
 
 **There is no CLI-less element.** `connector.cli` is the floor for every type: the CLI
@@ -173,16 +173,16 @@ validate and install.
 | | **clapp:app** | **clapp:cli** |
 |---|---|---|
 | `type` | `"clapp"` (or absent) | `"cli"` |
-| `protocol` | **required** | **forbidden** — it speaks no control pipe |
+| `protocol` | **required** | **forbidden** - it speaks no control pipe |
 | `launch` | **required** | **forbidden** |
 | `connector.cli` (+ `cliBin`) | required | required |
-| `connector.signals` | optional | **forbidden** — it has no app→agent path |
-| `connector.login` / `loginCheck` / `logout` | **forbidden** — the app's GUI owns auth | optional |
+| `connector.signals` | optional | **forbidden** - it has no app→agent path |
+| `connector.login` / `loginCheck` / `logout` | **forbidden** - the app's GUI owns auth | optional |
 
 **Forbidden means rejected**, not ignored: a silent drop would let a package believe it
 declared something it never got.
 
-**A manifest may never say `skill`.** A skill has no `clatch.json` at all — it is a plain
+**A manifest may never say `skill`.** A skill has no `clatch.json` at all - it is a plain
 `.md` whose YAML front matter IS its manifest, and its `name` is its identity. One
 claiming the kind is refused, with where its metadata belongs instead.
 
@@ -191,16 +191,16 @@ claiming the kind is refused, with where its metadata belongs instead.
 
 Optional, but when shipped they carry a fixed standard (as the agent avatar does),
 checked at install for format and resolution. Aspect is a design target, not a hard
-check — the GUI scales every asset with `cover`, so a mismatch crops, never letterboxes.
+check - the GUI scales every asset with `cover`, so a mismatch crops, never letterboxes.
 
 | | `icon` | `banner` | `photos` |
 |---|---|---|---|
-| role | app mark — library tiles + the detail hero (rendered 76px) + shortcuts | the library detail **hero** strip, behind the identity text | what the app LOOKS like: screenshots on the library page and a marketplace listing |
+| role | app mark - library tiles + the detail hero (rendered 76px) + shortcuts | the library detail **hero** strip, behind the identity text | what the app LOOKS like: screenshots on the library page and a marketplace listing |
 | count | 1 | 1 | **at most 4**, shown in the manifest's order |
-| format | PNG (the desktop app icon) | PNG / JPEG / WebP | PNG / JPEG / WebP, by **magic bytes** — the extension follows the format, it does not declare it |
-| aspect | **1:1** (square) | **215:32** (≈ 6.72:1) — design canvas `860×128` | free |
-| min resolution | **512×512** | **3440×512** | — |
-| max resolution | 1024×1024 | — | **1920×1080** |
+| format | PNG (the desktop app icon) | PNG / JPEG / WebP | PNG / JPEG / WebP, by **magic bytes** - the extension follows the format, it does not declare it |
+| aspect | **1:1** (square) | **215:32** (≈ 6.72:1) - design canvas `860×128` | free |
+| min resolution | **512×512** | **3440×512** | - |
+| max resolution | 1024×1024 | - | **1920×1080** |
 | max file | 1 MiB | 2 MiB | **2 MiB each** |
 
 **One banner, one aspect.** The format carries a single banner at 215:32 and offers no
@@ -216,8 +216,8 @@ what keeps a depot downloadable on the connection somebody actually has.
 The banner renders as a **128px-tall, ≤860px-wide** hero, `cover`-cropped and centered,
 under a **left-dark horizontal scrim** (white identity text sits over the left ~40%).
 So: keep focal imagery **center/right**; match the **6.72:1** ratio (the height is
-fixed — an off-ratio image loses its top/bottom); and expect the sides to crop on a
-narrow window. The `icon` is just the desktop app icon — no separate asset.
+fixed - an off-ratio image loses its top/bottom); and expect the sides to crop on a
+narrow window. The `icon` is just the desktop app icon - no separate asset.
 
 ## 10. Distribution
 
@@ -226,7 +226,7 @@ repository's **latest release**, `…@<tag>` a named one, and picks **one asset*
 Everything below is what makes that pick succeed.
 
 **Three spellings, and only three**: `<owner>/<repo>[@<tag>]`, `github.com/<owner>/<repo>`,
-and the full `https://` URL. There is no `github:` prefix — that spelling exists in Clatch,
+and the full `https://` URL. There is no `github:` prefix - that spelling exists in Clatch,
 but as the `source` recorded against an *installed* element, never as an argument to
 `install`, which refuses it.
 
@@ -241,7 +241,7 @@ are no others, and no aliases.
 | `<arch>` | `arm64` (aarch64) · `x64` (x86_64) |
 
 **It is the launcher's own architecture, not the machine's.** An Intel Mac reports
-`macos-x64`; Apple Silicon reports `macos-arm64`. Rosetta does not enter into it — the
+`macos-x64`; Apple Silicon reports `macos-arm64`. Rosetta does not enter into it - the
 launcher asks for what it is, so an arm64-only release simply has nothing to give an Intel
 host.
 
@@ -253,7 +253,7 @@ host.
 ```
 
 The match is on the **suffix**, so the part before `-<os>-<arch>` is free. Use the
-element's id — `com.acme.notes-macos-arm64.clapp` — so a downloaded file still says what
+element's id - `com.acme.notes-macos-arm64.clapp` - so a downloaded file still says what
 it is.
 
 ### Which asset the host gets
@@ -277,13 +277,13 @@ there is nothing arch-specific inside.
 ### Which platforms you cover
 
 **Coverage is the assets a release ships, not a list inside any manifest.** A depot's
-`launch` carries one OS key — its own — so no single `clatch.json` names a platform it does
+`launch` carries one OS key - its own - so no single `clatch.json` names a platform it does
 not run; the platforms an app supports are exactly the `-<os>-<arch>.clapp` files the
 release carries. There is no `platforms` field, and none is needed: the asset grid is the
 claim.
 
 > **You cover a platform by shipping its depot.** To add macOS you add a `-macos-…` asset
-> whose depot's `launch` names `macos` — never a key to an existing manifest, because a
+> whose depot's `launch` names `macos` - never a key to an existing manifest, because a
 > depot names only itself.
 
 **Neither OS nor arch is a multi-value field in the manifest.** `launch` names this depot's
@@ -293,12 +293,12 @@ read as a grid:
 | host | needs | if you ship only `macos-arm64` + `windows-x64` |
 |---|---|---|
 | Apple Silicon | `macos-arm64` | installs |
-| Intel Mac | `macos-x64` | **no match** — rule 2 and 3 do not save it |
+| Intel Mac | `macos-x64` | **no match** - rule 2 and 3 do not save it |
 | Windows x64 | `windows-x64` | installs |
 | Windows on ARM | `windows-arm64`, then `windows-any` | **no match**, though the OS would have emulated an x64 binary happily |
 
 Two depots cover the machines people have today. Covering the other two corners is adding
-assets to the same release — the manifest does not change, because arch was never in it.
+assets to the same release - the manifest does not change, because arch was never in it.
 
 ### The release itself
 
@@ -307,5 +307,5 @@ assets to the same release — the manifest does not change, because arch was ne
 | tag | any tag the repository publishes a release for; `install` with no `@tag` takes **latest** |
 | assets | one `.clapp` per platform, plus an optional sibling `<asset>.sha256` |
 | `.sha256` | first whitespace-separated field is the lowercase hex digest. Present and mismatched is a hard failure; absent falls back to HTTPS alone |
-| what it proves | **arrival, not authorship.** There is no signature — see [The package](#the-package) |
-| manifest | **identical across every depot of one version**, except the per-platform paths (`launch`, `connector.cliBin`) that must differ — each depot's `launch` names its own OS |
+| what it proves | **arrival, not authorship.** There is no signature - see [The package](#the-package) |
+| manifest | **identical across every depot of one version**, except the per-platform paths (`launch`, `connector.cliBin`) that must differ - each depot's `launch` names its own OS |
