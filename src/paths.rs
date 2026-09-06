@@ -286,12 +286,18 @@ pub fn install_root() -> PathBuf {
     // inside the bundle and every vendored thing (a Node runtime, a sidecar, an engine)
     // became invisible. `clatch.json` is the one file guaranteed to sit at the depot root,
     // so it is the honest marker.
+    // Bounded ascent. The manifest sits at most a macOS `.app` bundle's depth above the
+    // executable (`<root>/bin/<Name>.app/Contents/MacOS/<cli>` is five up), so stop after a
+    // few hops: walking to the filesystem root would stat every ancestor to `/` and let an
+    // unrelated - or planted - `clatch.json` in a distant parent masquerade as this depot's
+    // root.
     let mut dir = exe.parent();
-    while let Some(d) = dir {
-        if d.join("clatch.json").is_file() {
-            return d.to_path_buf();
+    for _ in 0..6 {
+        match dir {
+            Some(d) if d.join("clatch.json").is_file() => return d.to_path_buf(),
+            Some(d) => dir = d.parent(),
+            None => break,
         }
-        dir = d.parent();
     }
 
     // No manifest anywhere above us: a dev checkout running from `target/release`. Keep
