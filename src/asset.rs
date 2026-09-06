@@ -8,10 +8,16 @@
 //! table for its Bot API avatar upload.
 //!
 //! This module is that one table and that one bridge — and it is **tauri-free on
-//! purpose**, so the Tauri `#[tauri::command] fn asset` shim is three lines in the app
-//! and the same logic is available to a headless clapp. The base64 encoder is 15 lines
-//! of std rather than a dependency, which also lets whatsapp drop the `base64` crate it
-//! declares and never uses.
+//! purpose**, so the same logic is available to a headless clapp. The base64 encoder is 15
+//! lines of std rather than a dependency, which also lets whatsapp drop the `base64` crate
+//! it declares and never uses.
+//!
+//! **A path from the webview is not a path we read.** [`data_uri`] reads whatever path it
+//! is handed, so it is only for a path the CORE already trusts — the roster's own avatar
+//! path. A webview-facing command must go through [`data_uri_allowed`], which reads a path
+//! ONLY when it is one the core itself published; binding a `fn asset(path)` straight to
+//! [`data_uri`] is the arbitrary-file-read [`crate::media`] opens by rejecting. The GUI
+//! shim is [`crate::app::avatar_uri`], which builds the allow-list from the live roster.
 
 /// The image MIME for a path, by extension: `jpg`/`jpeg` · `gif` · `webp` · `png`.
 ///
@@ -57,6 +63,29 @@ pub fn data_uri(path: &str) -> Option<String> {
 /// The `data:` URI for bytes whose MIME you already know.
 pub fn data_uri_from(mime: &str, bytes: &[u8]) -> String {
     format!("data:{mime};base64,{}", base64_encode(bytes))
+}
+
+/// Like [`data_uri`], but for a path that came from OUTSIDE the core — a webview command
+/// most of all. It reads `path` ONLY when `path` is one the core itself published: an
+/// avatar path in `allowed` (the current roster). A path the core never handed out —
+/// `/etc/passwd`, a token file, anything the renderer chose — returns `None`, so a Tauri
+/// command bound to this can never be turned into "base64 me any file on this machine".
+///
+/// Matched canonically on both sides, so a `.`/`..` or symlinked spelling of an allowed
+/// avatar still resolves, while a symlink whose real target is not itself allowed fails.
+pub fn data_uri_allowed(path: &str, allowed: &[String]) -> Option<String> {
+    let want = std::fs::canonicalize(path).ok()?;
+    if !want.is_file() {
+        return None;
+    }
+    let allowed = allowed.iter().any(|a| {
+        a == path || std::fs::canonicalize(a).map(|c| c == want).unwrap_or(false)
+    });
+    if !allowed {
+        return None;
+    }
+    let bytes = std::fs::read(&want).ok()?;
+    Some(data_uri_from(image_mime(path), &bytes))
 }
 
 /// Read an image for upload: its bytes, MIME and a matching filename. The one place a
@@ -157,6 +186,35 @@ mod tests {
             Some("data:image/gif;base64,Zm9vYmFy".to_string())
         );
         assert_eq!(data_uri(dir.join("nope.png").to_str().unwrap()), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn allowed_reads_a_rostered_avatar_and_refuses_anything_else() {
+        let dir = std::env::temp_dir().join(format!("clappkit-allow-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let avatar = dir.join("a1.gif");
+        std::fs::write(&avatar, b"foobar").unwrap();
+        let secret = dir.join("id_rsa");
+        std::fs::write(&secret, b"PRIVATE KEY").unwrap();
+        let roster = vec![avatar.to_string_lossy().into_owned()];
+
+        // The published avatar reads; a path the roster never named does not, however real.
+        assert_eq!(
+            data_uri_allowed(avatar.to_str().unwrap(), &roster),
+            Some("data:image/gif;base64,Zm9vYmFy".to_string())
+        );
+        assert_eq!(data_uri_allowed(secret.to_str().unwrap(), &roster), None, "not an avatar");
+        assert_eq!(data_uri_allowed("/etc/passwd", &roster), None, "arbitrary read refused");
+        assert_eq!(data_uri_allowed(avatar.to_str().unwrap(), &[]), None, "empty roster reads nothing");
+
+        // A symlink to the secret is not a way in, even named like the avatar path spelling.
+        #[cfg(unix)]
+        {
+            let link = dir.join("sneak.gif");
+            std::os::unix::fs::symlink(&secret, &link).unwrap();
+            assert_eq!(data_uri_allowed(link.to_str().unwrap(), &roster), None, "symlink out refused");
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

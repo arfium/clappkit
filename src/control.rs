@@ -53,7 +53,8 @@ pub struct Avatar {
 /// Blank display fields are `None`, **never** `""`: Clatch sends an empty string when it
 /// has nothing to say about a backend or a model, and rendering "" as if it were a value
 /// is what put an empty model line in one app's GUI. `avatar` is an ABSOLUTE FILE PATH,
-/// not bytes — resolve it for a webview with [`crate::asset::data_uri`].
+/// not bytes — resolve it for a webview with [`crate::app::avatar_uri`], which reads only a
+/// path the roster actually published, never one the webview invents.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct AgentRow {
     pub id: String,

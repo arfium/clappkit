@@ -142,13 +142,24 @@ pub fn push_state(app: &AppHandle, snap: Value) {
     let _ = app.emit(STATE_EVENT, snap);
 }
 
-/// A local image as a `data:` URI — the webview cannot open `file://`, and the roster
-/// hands out absolute paths. `None` when unreadable.
+/// An avatar as a `data:` URI for the webview, which cannot open `file://`. Resolves `path`
+/// ONLY when it is one this app actually published in its agent roster, so a compromised or
+/// buggy renderer cannot turn the avatar bridge into "base64 me any file on this machine" —
+/// the arbitrary read [`crate::asset::data_uri`] would otherwise be. `None` when the path
+/// is not a rostered avatar, or is unreadable.
 ///
-/// Declare the command in the app's own crate; `generate_handler!` cannot see it here:
-/// `#[tauri::command] fn asset(path: String) -> Option<String> { clappkit::app::asset(&path) }`
-pub fn asset(path: &str) -> Option<String> {
-    crate::asset::data_uri(path)
+/// `generate_handler!` cannot see a command from this crate, so declare the shim in the
+/// app, with the app's `Control` in Tauri state:
+/// `#[tauri::command] fn asset(path: String, control: State<Control>) -> Option<String> {`
+/// `    clappkit::app::avatar_uri(&path, &control) }`
+pub fn avatar_uri(path: &str, control: &crate::control::Control) -> Option<String> {
+    let allowed: Vec<String> = control
+        .agents()
+        .into_iter()
+        .filter_map(|a| a.avatar.map(|av| av.path))
+        .filter(|s| !s.is_empty())
+        .collect();
+    crate::asset::data_uri_allowed(path, &allowed)
 }
 
 /// Serve the app's private GUI↔CLI IPC on [`crate::ipc::address`]`(cli)` — the relay every

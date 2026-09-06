@@ -86,7 +86,13 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 
     let write = || -> std::io::Result<()> {
         let mut opts = std::fs::OpenOptions::new();
-        opts.write(true).create(true).truncate(true);
+        // create_new (O_CREAT|O_EXCL), never a plain create: the temp file sits beside the
+        // real one, and if that directory is ever the world-writable fallback (paths.rs),
+        // a plain create+truncate would FOLLOW a pre-planted symlink of the same name and
+        // truncate whatever it targets. O_EXCL fails on any pre-existing entry, a symlink
+        // included, so the handle we get is a file we just made; a guaranteed-new file
+        // needs no truncate, and .mode(0o600) is the mode it is born with.
+        opts.write(true).create_new(true);
         // Owner-only from the instant it exists — the target inherits this through the
         // rename, so bots.json is never briefly world-readable.
         #[cfg(unix)]
@@ -138,14 +144,21 @@ pub fn quarantine(path: &Path) -> Option<PathBuf> {
     }
 }
 
-/// `<file>.tmp.<pid>` beside the target. The pid keeps two processes (a GUI and a CLI
-/// that fell back to writing) from clobbering each other's staging file mid-write.
+/// `<file>.tmp.<pid>.<nanos>` beside the target. The pid keeps two processes (a GUI and a
+/// CLI that fell back to writing) apart; the high-resolution stamp keeps one process's
+/// successive writes — and a REUSED pid after a crash — from ever naming a temp file that
+/// already exists, which is what lets the `create_new` in [`atomic_write`] stay both
+/// collision-free and unpredictable enough that it cannot be pre-planted.
 fn tmp_path(path: &Path) -> PathBuf {
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "state".into());
-    path.with_file_name(format!("{name}.tmp.{}", std::process::id()))
+    let uniq = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    path.with_file_name(format!("{name}.tmp.{}.{uniq}", std::process::id()))
 }
 
 /// Rename with a short Windows retry. `MoveFileEx(…, MOVEFILE_REPLACE_EXISTING)` — what

@@ -95,12 +95,21 @@ pub(crate) fn resolve(
 /// failed `chmod` on someone else's directory is not a reason to refuse to run. See the
 /// module docs for what Windows does and does not give you here.
 pub fn ensure_private_dir(dir: &Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dir)?;
     #[cfg(unix)]
     {
+        use std::os::unix::fs::DirBuilderExt;
+        // Create every missing component ALREADY 0700, not create-then-chmod: a directory
+        // that exists for even an instant at 0777 is a window a watcher can open a handle
+        // through, and a chmod afterward cannot revoke a handle already taken.
+        std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
+        // An already-existing directory kept whatever mode it had; tighten it too,
+        // best-effort, since it may predate this rule. A failure is a directory we do not
+        // own, which is not on its own a reason to refuse to run.
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
     }
+    #[cfg(not(unix))]
+    std::fs::create_dir_all(dir)?;
     Ok(())
 }
 
@@ -129,29 +138,97 @@ pub fn try_data_dir(cli: &str) -> anyhow::Result<PathBuf> {
 /// directory under the system temp dir — **never** `"."`, which under Clatch is the
 /// install directory (an update would eat the user's alarms, tokens or device link).
 pub fn data_dir(cli: &str) -> PathBuf {
+    debug_assert!(is_safe_segment(cli), "a cli shorthand must be one path segment: {cli:?}");
     match try_data_dir(cli) {
         Ok(d) => d,
         Err(e) => {
             static WARNED: std::sync::Once = std::sync::Once::new();
-            WARNED.call_once(|| eprintln!("clappkit: {e}; falling back to a temp directory"));
-            let fallback = std::env::temp_dir().join(format!("clapp-{cli}"));
-            let _ = ensure_private_dir(&fallback);
-            fallback
+            WARNED.call_once(|| eprintln!("clappkit: {e}; falling back to a private temp directory"));
+            private_fallback_dir(cli)
         }
     }
 }
 
+/// A private scratch directory for when there is nowhere durable to write. The old fallback
+/// was `temp_dir()/clapp-<cli>`: a name an attacker can predict and pre-create — as a
+/// directory they own, or a symlink — after which `create_dir_all` adopts it and the
+/// best-effort `chmod` cannot fix a directory we do not own, so the clapp writes its store
+/// (tokens included) somewhere readable or swappable. Instead create one we are GUARANTEED
+/// to own: a non-recursive `mkdir` (fails on any pre-existing entry, a planted symlink
+/// included), 0700 at birth, under an unpredictable name so a squatter cannot deny every
+/// attempt. Non-durable across runs, which is correct — this path only happens when there
+/// is no home to be durable in.
+fn private_fallback_dir(cli: &str) -> PathBuf {
+    let root = std::env::temp_dir();
+    let pid = std::process::id();
+    for attempt in 0u32..64 {
+        let uniq = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = root.join(format!("clapp-{cli}.{pid}.{uniq}.{attempt}"));
+        let mut b = std::fs::DirBuilder::new(); // non-recursive: mkdir errors if it exists
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            b.mode(0o700);
+        }
+        if b.create(&dir).is_ok() {
+            return dir; // success means WE made it, not an attacker who was already there
+        }
+    }
+    // 64 collisions is not a real filesystem; do not spin forever. Still under temp_dir,
+    // still hardened best-effort.
+    let dir = root.join(format!("clapp-{cli}.{pid}"));
+    let _ = ensure_private_dir(&dir);
+    dir
+}
+
+/// True when `s` is safe to `join` as a SINGLE file or directory name: non-empty, not
+/// `.`/`..`, no path separator or NUL, not an absolute or drive-relative spelling. A name
+/// failing this could turn `data_file(cli, name)` into a write OUTSIDE the private data
+/// dir.
+pub(crate) fn is_safe_segment(s: &str) -> bool {
+    !s.is_empty()
+        && s != "."
+        && s != ".."
+        && !s.contains('/')
+        && !s.contains('\\')
+        && !s.contains('\0')
+        && !Path::new(s).is_absolute()
+        && Path::new(s).components().count() == 1
+}
+
+/// `dir.join(name)`, but only with a `name` that cannot escape `dir`. A caller passing a
+/// traversal or an absolute path is a bug: in debug it trips an assert, and in release the
+/// name is reduced to its final safe component (or `state`) so a stray `../` can never
+/// redirect a write out of the private directory.
+fn join_segment(dir: PathBuf, name: &str) -> PathBuf {
+    if is_safe_segment(name) {
+        return dir.join(name);
+    }
+    debug_assert!(false, "clappkit: unsafe path segment {name:?} under {}", dir.display());
+    let safe = Path::new(name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .filter(|s| is_safe_segment(s))
+        .unwrap_or("state");
+    eprintln!("clappkit: refusing unsafe name {name:?}; using {safe:?} inside the data dir");
+    dir.join(safe)
+}
+
 /// A file inside [`data_dir`] — `data_dir(cli).join(name)`. The one-liner every app's
-/// `fn path()` becomes.
+/// `fn path()` becomes. `name` must be a single path segment (see [`is_safe_segment`]).
 pub fn data_file(cli: &str, name: &str) -> PathBuf {
-    data_dir(cli).join(name)
+    join_segment(data_dir(cli), name)
 }
 
 /// A sub-directory inside [`data_dir`], created and hardened like its parent — for state
 /// that is a tree rather than a file (WhatsApp's multi-device auth keys). Routing it
-/// through here is what keeps it inside the directory Clatch backs up and purges.
+/// through here is what keeps it inside the directory Clatch backs up and purges. `name`
+/// must be a single path segment (see [`is_safe_segment`]).
 pub fn data_subdir(cli: &str, name: &str) -> PathBuf {
-    let dir = data_dir(cli).join(name);
+    let dir = join_segment(data_dir(cli), name);
     let _ = ensure_private_dir(&dir);
     dir
 }
