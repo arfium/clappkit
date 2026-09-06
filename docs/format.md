@@ -30,8 +30,9 @@ never skipped, because a depot missing a file it promised is worse than one that
 open.
 
 **One platform per depot.** Which depot the host gets, and how a release must be laid out
-for it to be found, is [Distribution](#distribution) below. Only the host's launch command
-is validated — the other OS keys are claims about depots that live elsewhere.
+for it to be found, is [Distribution](#distribution) below. A depot's manifest names only its OWN OS in `launch` — one key, the platform
+these bytes run on, and no other OS keys to disagree with them. Which platforms the app
+covers at all is which depots the release ships, never a list inside one manifest.
 
 **There is no signature.** A depot carries no `.sig` and nothing checks one; a release's
 sibling `.sha256` proves the bytes arrived intact, not that anyone trustworthy made them.
@@ -69,7 +70,7 @@ the agent-facing surface.
   "version": "0.1.0",
   "protocol": 2,                            // control-pipe major this app targets (§6, [`format.md`](format.md)2)
   "icon": "assets/icon.png",                // optional; banner/about/tags also optional
-  "launch": { "macos": "bin/clapp", "args": ["app"] },   // ≥1 per-OS command
+  "launch": { "macos": "bin/clapp", "args": ["app"] },   // one key: this depot's OS
   "connector": {                            // agent-facing surface; every field optional
     "cli": "clapp",                         // the CLI shorthand; `<cli> -h` is the manual
     "cliBin": "bin/clapp",                  // optional; default bin/<cli>
@@ -108,15 +109,17 @@ Sizes and formats are bounded — see § 9. Pictures below.
 
 ## 6. `launch`
 
-Required on a **clapp:app**, forbidden on a **clapp:cli**. At least one OS key.
+Required on a **clapp:app**, forbidden on a **clapp:cli**. Exactly one OS key — the one
+this depot runs on. The same version's Windows depot carries a `windows` key instead,
+which is why `launch` differs across a version's depots (§ 10. Distribution).
 
 ```jsonc
-"launch": { "macos": "bin/notes", "windows": "bin/notes.exe", "args": ["app"] }
+"launch": { "macos": "bin/notes", "args": ["app"] }
 ```
 
 | key | required | rule | example |
 |---|---|---|---|
-| `macos` · `windows` · `linux` | at least one | the command, relative to the content root — **enforced at validation**, not merely expected: an absolute path, any `..`, and an empty segment (`bin//a`) are all refused. Spaces and ordinary characters are fine (`"My App.app/Contents/MacOS/app"` passes). **Each key present is the claim "runs on that OS"** | `"bin/notes"` |
+| `macos` · `windows` · `linux` | exactly one | the command for **this depot's own OS**, relative to the content root — **enforced at validation**, not merely expected: an absolute path, any `..`, and an empty segment (`bin//a`) are all refused. Spaces and ordinary characters are fine (`"My App.app/Contents/MacOS/app"` passes). A **second OS key is refused**; which OSes the app supports is the release's asset grid, not this object | `"bin/notes"` |
 | `args` | no | arguments appended to whichever command was chosen | `["app"]` |
 
 The command must stay inside the depot because **`args` are appended verbatim**. An
@@ -271,18 +274,21 @@ release actually ships.
 turns a clean "nothing for windows-arm64" into a crash after install. Ship `-any` only when
 there is nothing arch-specific inside.
 
-### Which platforms you owe
+### Which platforms you cover
 
-**The OS keys in `launch` are the advertised platforms** — a per-OS command is the claim
-"runs on that OS", and there is no separate `platforms` field to disagree with it. So:
+**Coverage is the assets a release ships, not a list inside any manifest.** A depot's
+`launch` carries one OS key — its own — so no single `clatch.json` names a platform it does
+not run; the platforms an app supports are exactly the `-<os>-<arch>.clapp` files the
+release carries. There is no `platforms` field, and none is needed: the asset grid is the
+claim.
 
-> **Every OS key in `launch` must have a depot in the release.** A key with no depot is a
-> promise the launcher only discovers it cannot keep at install time, in front of the user.
+> **You cover a platform by shipping its depot.** To add macOS you add a `-macos-…` asset
+> whose depot's `launch` names `macos` — never a key to an existing manifest, because a
+> depot names only itself.
 
-Drop the key or ship the depot. Those are the two ways to be correct.
-
-**Arch is not in the manifest at all.** `launch` names operating systems; the asset name is
-the only place arch is decided. A release therefore has to be read as a grid:
+**Neither OS nor arch is a multi-value field in the manifest.** `launch` names this depot's
+single OS; the asset name is the only place arch is decided. A release therefore has to be
+read as a grid:
 
 | host | needs | if you ship only `macos-arm64` + `windows-x64` |
 |---|---|---|
@@ -302,4 +308,4 @@ assets to the same release — the manifest does not change, because arch was ne
 | assets | one `.clapp` per platform, plus an optional sibling `<asset>.sha256` |
 | `.sha256` | first whitespace-separated field is the lowercase hex digest. Present and mismatched is a hard failure; absent falls back to HTTPS alone |
 | what it proves | **arrival, not authorship.** There is no signature — see [The package](#the-package) |
-| manifest | **identical across every depot of one version**, except the per-platform paths (`launch`, `connector.cliBin`) that must differ |
+| manifest | **identical across every depot of one version**, except the per-platform paths (`launch`, `connector.cliBin`) that must differ — each depot's `launch` names its own OS |

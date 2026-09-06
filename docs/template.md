@@ -47,8 +47,11 @@ and the media boundary are shared and already correct.
 - **`connector.signals`** — every signal, as `{id, type}` with `type ∈ run | context |
   buffered`. The declaration is the authority: Clatch re-validates the wire type against it
   and drops a mismatch. Declaring `poke` as `run` is what makes it wake an agent.
-- **`launch`** — per-OS, with no cross-OS fallback. Ship `macos`, `windows` and `linux`
-  entries only for the binaries you actually build.
+- **`launch`** — in the repo, one command per OS you build (`macos`, `windows`, …).
+  Packaging then emits **one depot per platform, each carrying exactly one of them — its
+  own OS** (format.md § 6 requires a depot name a single platform); the rest are stripped,
+  and the OSes your app supports are the depots the release ships, not a list in any one
+  installed manifest ([format.md](format.md) § 10. Distribution).
 
 ## 4. Verify
 
