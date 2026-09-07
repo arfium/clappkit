@@ -232,6 +232,45 @@ mod tests {
     use super::*;
     use std::path::Path;
 
+    /// One test's IPC address, in the shape THIS platform's transport takes: a named pipe
+    /// on Windows, a socket file under a private temp directory on unix. The two tests
+    /// that bind used to spell the unix form on both, and a socket path reaches the
+    /// Windows pipe API as a filename — "the filename, directory name, or volume label
+    /// syntax is incorrect" (os error 123), which is how those two failed on every
+    /// Windows run this crate has had. `address()` itself was never wrong.
+    struct TestAddr {
+        addr: String,
+        #[cfg(unix)]
+        dir: std::path::PathBuf,
+    }
+
+    impl TestAddr {
+        fn new(tag: &str) -> Self {
+            let pid = std::process::id();
+            #[cfg(windows)]
+            {
+                Self { addr: pipe_name(&format!("test-{tag}"), &format!("{pid}")) }
+            }
+            #[cfg(unix)]
+            {
+                let dir = std::env::temp_dir().join(format!("clappkit-ipc-{tag}-{pid}"));
+                let _ = std::fs::create_dir_all(&dir);
+                let addr = dir.join("t.sock").to_string_lossy().into_owned();
+                Self { addr, dir }
+            }
+        }
+    }
+
+    impl Drop for TestAddr {
+        fn drop(&mut self) {
+            // Only unix leaves a file behind; a pipe name disappears with its last handle.
+            #[cfg(unix)]
+            {
+                let _ = std::fs::remove_dir_all(&self.dir);
+            }
+        }
+    }
+
     #[test]
     fn the_unix_socket_lives_in_the_apps_dotdir() {
         assert_eq!(
@@ -270,17 +309,14 @@ mod tests {
 
     #[tokio::test]
     async fn a_second_bind_on_a_live_address_is_refused() {
-        let dir = std::env::temp_dir().join(format!("clappkit-ipc-{}", std::process::id()));
-        let _ = std::fs::create_dir_all(&dir);
-        let addr = dir.join("t.sock").to_string_lossy().into_owned();
-        let first = bind_reclaim(&addr).expect("first bind owns the address");
-        let refusal = match bind_reclaim(&addr) {
+        let t = TestAddr::new("bind");
+        let first = bind_reclaim(&t.addr).expect("first bind owns the address");
+        let refusal = match bind_reclaim(&t.addr) {
             Ok(_) => panic!("a live instance must not be clobbered"),
             Err(e) => e.to_string(),
         };
         assert!(refusal.contains("already running"), "{refusal}");
         drop(first);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[cfg(unix)]
@@ -301,10 +337,8 @@ mod tests {
 
     #[tokio::test]
     async fn serve_answers_a_request_and_survives_a_client_that_says_nothing() {
-        let dir = std::env::temp_dir().join(format!("clappkit-ipc-serve-{}", std::process::id()));
-        let _ = std::fs::create_dir_all(&dir);
-        let addr = dir.join("s.sock").to_string_lossy().into_owned();
-        let a = addr.clone();
+        let t = TestAddr::new("serve");
+        let a = t.addr.clone();
         tokio::spawn(async move {
             let _ = serve(&a, |req: Value| async move {
                 serde_json::json!({ "ok": true, "echo": req.get("cmd").cloned() })
@@ -315,15 +349,14 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(80)).await;
 
         // A client that connects and drops without writing must not wedge the server.
-        drop(connect(&addr).await.expect("connect"));
+        drop(connect(&t.addr).await.expect("connect"));
 
-        let mut s = connect(&addr).await.expect("connect");
+        let mut s = connect(&t.addr).await.expect("connect");
         frame::write(&mut s, &serde_json::json!({ "cmd": "ping" }), LIMITS)
             .await
             .unwrap();
         let resp = frame::read::<_, Value>(&mut s, LIMITS).await.unwrap().unwrap();
         assert_eq!(resp["ok"], true);
         assert_eq!(resp["echo"], "ping");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }
