@@ -167,6 +167,9 @@ fn private_fallback_dir(cli: &str) -> PathBuf {
             .map(|d| d.as_nanos())
             .unwrap_or(0);
         let dir = root.join(format!("clapp-{cli}.{pid}.{uniq}.{attempt}"));
+        // The `mut` is the unix arm's, immediately below: Windows has no DirBuilder mode
+        // to set, so the binding is never written to there.
+        #[cfg_attr(not(unix), allow(unused_mut))]
         let mut b = std::fs::DirBuilder::new(); // non-recursive: mkdir errors if it exists
         #[cfg(unix)]
         {
