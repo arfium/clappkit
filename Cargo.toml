@@ -8,6 +8,14 @@ edition = "2021"
 description = "The SDK every clapp is built on: the Clatch control pipe, the app's own GUI<->CLI IPC, one-binary-two-roles dispatch, paths, atomic persistence and the Tauri glue."
 license = "Apache-2.0"
 
+# The Dock-icon helper needs the `icon` feature (it calls into that module), so gate the
+# binary on it: without this, `cargo build --no-default-features` — the headless/core-only
+# build the comment below advertises — tries to build this bin and fails.
+[[bin]]
+name = "dock-icon"
+path = "src/bin/dock-icon.rs"
+required-features = ["icon"]
+
 # What a clapp pays for. The CORE (control pipe, IPC, role dispatch, paths, store,
 # asset, window policy) is dependency-light and GUI-free, so a headless clapp — or a
 # tool that links clappkit only for `ipc::request` — never compiles a PNG codec, AppKit
