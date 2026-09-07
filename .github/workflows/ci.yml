@@ -6,21 +6,18 @@
 # (crates/clapp-ipc, crates/clapp-pipe): no ssh://, no key, no vendored copy — a fresh
 # clone builds. So CI tests the whole workspace, adversarial framing tests included.
 #
-# Two gates, split by cost:
-#   * quick (ubuntu, 1x): runs on every push and PR. `cargo test --workspace` is the hard
-#     gate; clippy and audit report but do not fail the build (the crate is not lint-clean
-#     today, and a red nobody can fix is how people learn to ignore CI — tighten to
-#     `-D warnings` and a gating audit once clean).
-#   * platforms (macOS + Windows, 10x on a private repo): MANUAL — `gh workflow run CI`.
-#     These are where the cfg branches differ (unix 0700 vs a Windows ACL, a unix socket
-#     vs a named pipe), but a push-and-PR gate on 10x runners across fifteen repos burns
-#     the allowance faster than it earns. The real local gate is still `npm run verify`,
-#     which opens a window and proves the two surfaces talk — no headless runner can.
+# MANUAL ONLY (`gh workflow run CI`, or the Actions tab). No push or pull_request trigger:
+# GitHub Actions minutes are the constraint across this family, and the real gate is the
+# local `npm run verify`, which opens a window and proves the two surfaces talk - no
+# headless runner can. Two jobs, both on manual dispatch:
+#   * quick (ubuntu, 1x): `cargo test --workspace` - the WHOLE workspace, or the clapp-ipc
+#     adversarial framing tests and clapp-pipe never run; clippy and audit report but do
+#     not fail (the crate is not lint-clean yet).
+#   * platforms (macOS + Windows, 10x): where the cfg branches differ (unix 0700 vs a
+#     Windows ACL, a unix socket vs a named pipe).
 name: CI
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +28,7 @@ permissions:
   contents: read
 
 jobs:
-  # Cheap and automatic: the library's own logic on the platform that bills at 1x.
+  # The library's own logic on the platform that bills at 1x.
   quick:
     runs-on: ubuntu-latest
     steps:
